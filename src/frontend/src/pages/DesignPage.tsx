@@ -34,36 +34,19 @@ const STYLE_IDS = [
 ] as const;
 type StyleId = (typeof STYLE_IDS)[number];
 
-const STYLES: { id: StyleId; label: string; desc: string; img: string }[] = [
-  {
-    id: "modern",
-    label: "Modern",
-    desc: "Clean lines, neutral palette",
-    img: "/assets/generated/style-modern.dim_400x300.jpg",
-  },
-  {
-    id: "minimalist",
-    label: "Minimalist",
-    desc: "White space, zero clutter",
-    img: "/assets/generated/style-minimalist.dim_400x300.jpg",
-  },
-  {
-    id: "luxury",
-    label: "Luxury",
-    desc: "Rich textures, gold accents",
-    img: "/assets/generated/style-luxury.dim_400x300.jpg",
-  },
+const STYLES: { id: StyleId; label: string; desc: string }[] = [
+  { id: "modern", label: "Modern", desc: "Clean lines, neutral palette" },
+  { id: "minimalist", label: "Minimalist", desc: "White space, zero clutter" },
+  { id: "luxury", label: "Luxury", desc: "Rich textures, gold accents" },
   {
     id: "scandinavian",
     label: "Scandinavian",
     desc: "Light wood, cozy textiles",
-    img: "/assets/generated/style-scandinavian.dim_400x300.jpg",
   },
   {
     id: "indianTraditional",
     label: "Indian Traditional",
     desc: "Vibrant colors, ornate patterns",
-    img: "/assets/generated/style-indian.dim_400x300.jpg",
   },
 ];
 
@@ -81,6 +64,15 @@ const DECOR_ITEMS = [
 ];
 
 const STEPS = ["Upload Room", "Choose Style", "Pick Decor"];
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
 
 export default function DesignPage() {
   const navigate = useNavigate();
@@ -132,10 +124,22 @@ export default function DesignPage() {
       return;
     }
     setIsGenerating(true);
-    // Simulate a brief processing delay before navigating
-    await new Promise((res) => setTimeout(res, 300));
-    const mockJobId = `${selectedStyle}-${Date.now()}`;
-    navigate({ to: `/result/${mockJobId}` });
+    try {
+      const imageBase64 = await fileToBase64(roomFile);
+      localStorage.setItem(
+        "designData",
+        JSON.stringify({
+          imageBase64,
+          selectedStyle,
+          selectedDecor: Array.from(selectedDecor),
+        }),
+      );
+      const jobId = `${selectedStyle}-${Date.now()}`;
+      navigate({ to: `/result/${jobId}` });
+    } catch {
+      toast.error("Failed to process image. Please try again.");
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -277,32 +281,23 @@ export default function DesignPage() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                     data-ocid={`design.item.${i + 1}`}
-                    className={`relative rounded-xl overflow-hidden border-2 text-left transition-all ${
+                    className={`relative rounded-xl overflow-hidden border-2 text-left transition-all p-5 bg-card ${
                       selectedStyle === style.id
                         ? "border-foreground"
                         : "border-border hover:border-foreground/30"
                     }`}
                   >
                     {selectedStyle === style.id && (
-                      <div className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-foreground flex items-center justify-center">
+                      <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-foreground flex items-center justify-center">
                         <Check className="w-3.5 h-3.5 text-primary-foreground" />
                       </div>
                     )}
-                    <div className="aspect-[4/3] overflow-hidden">
-                      <img
-                        src={style.img}
-                        alt={style.label}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="p-3 bg-card">
-                      <p className="font-sans font-semibold text-sm">
-                        {style.label}
-                      </p>
-                      <p className="font-sans text-xs text-muted-foreground">
-                        {style.desc}
-                      </p>
-                    </div>
+                    <p className="font-sans font-semibold text-sm mb-1">
+                      {style.label}
+                    </p>
+                    <p className="font-sans text-xs text-muted-foreground">
+                      {style.desc}
+                    </p>
                   </motion.button>
                 ))}
               </div>
@@ -349,7 +344,11 @@ export default function DesignPage() {
                         </div>
                       )}
                       <item.icon
-                        className={`w-6 h-6 ${isSelected ? "text-foreground" : "text-muted-foreground"}`}
+                        className={`w-6 h-6 ${
+                          isSelected
+                            ? "text-foreground"
+                            : "text-muted-foreground"
+                        }`}
                       />
                       <span
                         className={`font-sans text-xs font-medium ${
@@ -416,7 +415,7 @@ export default function DesignPage() {
                     <span className="loading-dot w-1.5 h-1.5 bg-primary-foreground rounded-full inline-block" />
                     <span className="loading-dot w-1.5 h-1.5 bg-primary-foreground rounded-full inline-block" />
                   </span>
-                  Generating...
+                  Processing...
                 </>
               ) : (
                 <>

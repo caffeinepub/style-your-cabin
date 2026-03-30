@@ -22,40 +22,45 @@ import {
 import { AnimatePresence, motion } from "motion/react";
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
-import { ExternalBlob } from "../backend";
-import { Style } from "../backend";
 import Footer from "../components/Footer";
 import Header from "../components/Header";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
-import { useCreateJob } from "../hooks/useQueries";
 
-const STYLES = [
+const STYLE_IDS = [
+  "modern",
+  "minimalist",
+  "luxury",
+  "scandinavian",
+  "indianTraditional",
+] as const;
+type StyleId = (typeof STYLE_IDS)[number];
+
+const STYLES: { id: StyleId; label: string; desc: string; img: string }[] = [
   {
-    id: Style.modern,
+    id: "modern",
     label: "Modern",
     desc: "Clean lines, neutral palette",
     img: "/assets/generated/style-modern.dim_400x300.jpg",
   },
   {
-    id: Style.minimalist,
+    id: "minimalist",
     label: "Minimalist",
     desc: "White space, zero clutter",
     img: "/assets/generated/style-minimalist.dim_400x300.jpg",
   },
   {
-    id: Style.luxury,
+    id: "luxury",
     label: "Luxury",
     desc: "Rich textures, gold accents",
     img: "/assets/generated/style-luxury.dim_400x300.jpg",
   },
   {
-    id: Style.scandinavian,
+    id: "scandinavian",
     label: "Scandinavian",
     desc: "Light wood, cozy textiles",
     img: "/assets/generated/style-scandinavian.dim_400x300.jpg",
   },
   {
-    id: Style.indianTraditional,
+    id: "indianTraditional",
     label: "Indian Traditional",
     desc: "Vibrant colors, ornate patterns",
     img: "/assets/generated/style-indian.dim_400x300.jpg",
@@ -79,15 +84,13 @@ const STEPS = ["Upload Room", "Choose Style", "Pick Decor"];
 
 export default function DesignPage() {
   const navigate = useNavigate();
-  const { identity, login } = useInternetIdentity();
-  const isAuthenticated = !!identity;
-  const { mutate: createJob, isPending } = useCreateJob();
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const [step, setStep] = useState(0);
   const [roomFile, setRoomFile] = useState<File | null>(null);
   const [roomPreview, setRoomPreview] = useState<string | null>(null);
   const [isDragOver, setIsDragOver] = useState(false);
-  const [selectedStyle, setSelectedStyle] = useState<Style | null>(null);
+  const [selectedStyle, setSelectedStyle] = useState<StyleId | null>(null);
   const [selectedDecor, setSelectedDecor] = useState<Set<string>>(new Set());
 
   const handleFileDrop = useCallback((file: File) => {
@@ -124,34 +127,15 @@ export default function DesignPage() {
   const canProceed = [!!roomFile, !!selectedStyle, selectedDecor.size > 0];
 
   const handleGenerate = async () => {
-    if (!isAuthenticated) {
-      toast.error("Please sign in to generate a design");
-      await login();
-      return;
-    }
     if (!roomFile || !selectedStyle || selectedDecor.size === 0) {
       toast.error("Please complete all steps first");
       return;
     }
-
-    const bytes = new Uint8Array(await roomFile.arrayBuffer());
-    const blob = ExternalBlob.fromBytes(bytes);
-
-    createJob(
-      {
-        roomImageBlob: blob,
-        style: selectedStyle,
-        decorItems: Array.from(selectedDecor),
-      },
-      {
-        onSuccess: (result) => {
-          navigate({ to: `/result/${result.jobId.toString()}` });
-        },
-        onError: (err) => {
-          toast.error(`Failed to create design job: ${(err as Error).message}`);
-        },
-      },
-    );
+    setIsGenerating(true);
+    // Simulate a brief processing delay before navigating
+    await new Promise((res) => setTimeout(res, 300));
+    const mockJobId = `${selectedStyle}-${Date.now()}`;
+    navigate({ to: `/result/${mockJobId}` });
   };
 
   return (
@@ -177,44 +161,82 @@ export default function DesignPage() {
                   {i < step ? <Check className="w-4 h-4" /> : i + 1}
                 </div>
                 <span
-                  className={`font-sans text-xs ${i === step ? "text-foreground font-medium" : "text-muted-foreground"}`}
+                  className={`font-sans text-xs ${
+                    i === step
+                      ? "text-foreground font-medium"
+                      : "text-muted-foreground"
+                  }`}
                 >
                   {label}
                 </span>
               </div>
             ))}
           </div>
-          <Progress
-            value={((step + 1) / STEPS.length) * 100}
-            className="h-1"
-            data-ocid="design.loading_state"
-          />
+          <Progress value={((step + 1) / STEPS.length) * 100} className="h-1" />
         </div>
 
         <AnimatePresence mode="wait">
           {/* Step 0: Upload */}
           {step === 0 && (
             <motion.div
-              key="step-0"
-              initial={{ opacity: 0, x: 30 }}
+              key="upload"
+              initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -30 }}
-              transition={{ duration: 0.3 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.25 }}
             >
-              <h2 className="font-serif text-3xl font-bold mb-2">
+              <h2 className="font-serif text-2xl font-bold mb-2">
                 Upload Your Room
               </h2>
-              <p className="font-sans text-muted-foreground mb-8">
-                Drag & drop or click to upload a photo of the room you'd like to
-                redesign.
+              <p className="font-sans text-muted-foreground text-sm mb-6">
+                Drag & drop a photo or click to browse.
               </p>
 
-              {roomPreview ? (
-                <div className="relative rounded-xl overflow-hidden border border-border aspect-video">
+              {!roomPreview ? (
+                <div
+                  onDrop={handleDrop}
+                  onDragOver={(e) => {
+                    e.preventDefault();
+                    setIsDragOver(true);
+                  }}
+                  onDragLeave={() => setIsDragOver(false)}
+                  data-ocid="design.dropzone"
+                  className={`border-2 border-dashed rounded-2xl flex flex-col items-center justify-center h-64 cursor-pointer transition-colors ${
+                    isDragOver
+                      ? "border-foreground bg-foreground/5"
+                      : "border-border hover:border-foreground/40"
+                  }`}
+                  onClick={() =>
+                    document.getElementById("room-file-input")?.click()
+                  }
+                  onKeyDown={(e) =>
+                    e.key === "Enter" &&
+                    document.getElementById("room-file-input")?.click()
+                  }
+                >
+                  <Upload className="w-10 h-10 text-muted-foreground mb-3" />
+                  <p className="font-sans text-sm text-muted-foreground">
+                    Drop your image here or{" "}
+                    <span className="underline font-medium">browse</span>
+                  </p>
+                  <p className="font-sans text-xs text-muted-foreground/60 mt-1">
+                    JPG, PNG, WEBP up to 20MB
+                  </p>
+                  <input
+                    id="room-file-input"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleFileInput}
+                    data-ocid="design.upload_button"
+                  />
+                </div>
+              ) : (
+                <div className="relative rounded-2xl overflow-hidden border border-border">
                   <img
                     src={roomPreview}
                     alt="Room preview"
-                    className="w-full h-full object-cover"
+                    className="w-full object-cover max-h-80"
                   />
                   <button
                     type="button"
@@ -222,49 +244,12 @@ export default function DesignPage() {
                       setRoomFile(null);
                       setRoomPreview(null);
                     }}
-                    data-ocid="design.close_button"
-                    className="absolute top-3 right-3 w-8 h-8 bg-black/60 text-white rounded-full flex items-center justify-center hover:bg-black/80 transition-colors"
+                    data-ocid="design.delete_button"
+                    className="absolute top-3 right-3 bg-foreground text-primary-foreground rounded-full w-7 h-7 flex items-center justify-center hover:bg-foreground/80 transition-colors"
                   >
                     <X className="w-4 h-4" />
                   </button>
-                  <div className="absolute bottom-3 left-3 bg-black/60 text-white text-xs px-3 py-1.5 rounded-full font-sans">
-                    {roomFile?.name}
-                  </div>
                 </div>
-              ) : (
-                <label
-                  data-ocid="design.dropzone"
-                  className={`block border-2 border-dashed rounded-xl p-12 text-center cursor-pointer transition-colors ${
-                    isDragOver
-                      ? "border-foreground bg-accent"
-                      : "border-border hover:border-foreground/40 hover:bg-accent/50"
-                  }`}
-                  onDragOver={(e) => {
-                    e.preventDefault();
-                    setIsDragOver(true);
-                  }}
-                  onDragLeave={() => setIsDragOver(false)}
-                  onDrop={handleDrop}
-                >
-                  <input
-                    type="file"
-                    accept="image/*"
-                    className="sr-only"
-                    onChange={handleFileInput}
-                    data-ocid="design.upload_button"
-                  />
-                  <div
-                    className={`w-16 h-16 rounded-2xl bg-muted flex items-center justify-center mx-auto mb-4 ${isDragOver ? "pulse-ring" : ""}`}
-                  >
-                    <Upload className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <p className="font-sans font-medium text-foreground mb-1">
-                    Drop your room photo here
-                  </p>
-                  <p className="font-sans text-sm text-muted-foreground">
-                    or click to browse — JPG, PNG, WEBP up to 10MB
-                  </p>
-                </label>
               )}
             </motion.div>
           )}
@@ -272,52 +257,51 @@ export default function DesignPage() {
           {/* Step 1: Style */}
           {step === 1 && (
             <motion.div
-              key="step-1"
-              initial={{ opacity: 0, x: 30 }}
+              key="style"
+              initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -30 }}
-              transition={{ duration: 0.3 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.25 }}
             >
-              <h2 className="font-serif text-3xl font-bold mb-2">
+              <h2 className="font-serif text-2xl font-bold mb-2">
                 Choose Your Style
               </h2>
-              <p className="font-sans text-muted-foreground mb-8">
-                Pick the design aesthetic you'd like AI to apply to your room.
+              <p className="font-sans text-muted-foreground text-sm mb-6">
+                Pick the aesthetic you want for your redesigned room.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                {STYLES.map((style) => (
+                {STYLES.map((style, i) => (
                   <motion.button
                     key={style.id}
                     onClick={() => setSelectedStyle(style.id)}
-                    whileHover={{ y: -2 }}
-                    data-ocid="design.tab"
-                    className={`text-left rounded-xl overflow-hidden border-2 transition-all ${
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                    data-ocid={`design.item.${i + 1}`}
+                    className={`relative rounded-xl overflow-hidden border-2 text-left transition-all ${
                       selectedStyle === style.id
-                        ? "border-foreground shadow-premium"
+                        ? "border-foreground"
                         : "border-border hover:border-foreground/30"
                     }`}
                   >
-                    <div className="aspect-video overflow-hidden">
+                    {selectedStyle === style.id && (
+                      <div className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-foreground flex items-center justify-center">
+                        <Check className="w-3.5 h-3.5 text-primary-foreground" />
+                      </div>
+                    )}
+                    <div className="aspect-[4/3] overflow-hidden">
                       <img
                         src={style.img}
                         alt={style.label}
                         className="w-full h-full object-cover"
                       />
                     </div>
-                    <div className="p-3 bg-card flex items-center justify-between">
-                      <div>
-                        <p className="font-sans font-semibold text-sm">
-                          {style.label}
-                        </p>
-                        <p className="font-sans text-xs text-muted-foreground">
-                          {style.desc}
-                        </p>
-                      </div>
-                      {selectedStyle === style.id && (
-                        <div className="w-6 h-6 rounded-full bg-foreground flex items-center justify-center flex-shrink-0">
-                          <Check className="w-3.5 h-3.5 text-primary-foreground" />
-                        </div>
-                      )}
+                    <div className="p-3 bg-card">
+                      <p className="font-sans font-semibold text-sm">
+                        {style.label}
+                      </p>
+                      <p className="font-sans text-xs text-muted-foreground">
+                        {style.desc}
+                      </p>
                     </div>
                   </motion.button>
                 ))}
@@ -328,19 +312,22 @@ export default function DesignPage() {
           {/* Step 2: Decor */}
           {step === 2 && (
             <motion.div
-              key="step-2"
-              initial={{ opacity: 0, x: 30 }}
+              key="decor"
+              initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -30 }}
-              transition={{ duration: 0.3 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ duration: 0.25 }}
+              className="space-y-6"
             >
-              <h2 className="font-serif text-3xl font-bold mb-2">
-                Pick Decor Items
-              </h2>
-              <p className="font-sans text-muted-foreground mb-8">
-                Select items you'd like AI to place in your redesigned room.
-              </p>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 mb-8">
+              <div>
+                <h2 className="font-serif text-2xl font-bold mb-2">
+                  Pick Your Decor
+                </h2>
+                <p className="font-sans text-muted-foreground text-sm">
+                  Select the items you'd like placed in your room.
+                </p>
+              </div>
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 gap-3">
                 {DECOR_ITEMS.map((item, i) => {
                   const isSelected = selectedDecor.has(item.id);
                   return (
@@ -365,7 +352,11 @@ export default function DesignPage() {
                         className={`w-6 h-6 ${isSelected ? "text-foreground" : "text-muted-foreground"}`}
                       />
                       <span
-                        className={`font-sans text-xs font-medium ${isSelected ? "text-foreground" : "text-muted-foreground"}`}
+                        className={`font-sans text-xs font-medium ${
+                          isSelected
+                            ? "text-foreground"
+                            : "text-muted-foreground"
+                        }`}
                       >
                         {item.label}
                       </span>
@@ -414,11 +405,11 @@ export default function DesignPage() {
           ) : (
             <Button
               onClick={handleGenerate}
-              disabled={isPending || !canProceed.every(Boolean)}
+              disabled={isGenerating || !canProceed.every(Boolean)}
               data-ocid="design.submit_button"
               className="bg-foreground text-primary-foreground hover:bg-foreground/90 font-sans px-8"
             >
-              {isPending ? (
+              {isGenerating ? (
                 <>
                   <span className="loading-dots flex gap-1 mr-2">
                     <span className="loading-dot w-1.5 h-1.5 bg-primary-foreground rounded-full inline-block" />

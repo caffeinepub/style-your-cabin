@@ -9,20 +9,19 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useState } from "react";
-import { useSaveUserProfile } from "../hooks/useQueries";
 
 interface ProfileSetupProps {
   open: boolean;
+  onComplete?: (name: string) => void;
 }
 
-export default function ProfileSetup({ open }: ProfileSetupProps) {
+export default function ProfileSetup({ open, onComplete }: ProfileSetupProps) {
   const [name, setName] = useState("");
-  const { mutate, isPending } = useSaveUserProfile();
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim()) return;
-    mutate({ name: name.trim() });
+    onComplete?.(name.trim());
   };
 
   return (
@@ -49,10 +48,10 @@ export default function ProfileSetup({ open }: ProfileSetupProps) {
           <Button
             type="submit"
             data-ocid="profile.submit_button"
-            disabled={isPending || !name.trim()}
+            disabled={!name.trim()}
             className="w-full bg-foreground text-primary-foreground"
           >
-            {isPending ? "Saving..." : "Get Started"}
+            Get Started
           </Button>
         </form>
       </DialogContent>

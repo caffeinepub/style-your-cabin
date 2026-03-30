@@ -1,31 +1,10 @@
 import { Button } from "@/components/ui/button";
-import { useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { Home, Moon, Sun } from "lucide-react";
 import { useTheme } from "../contexts/ThemeContext";
-import { useInternetIdentity } from "../hooks/useInternetIdentity";
 
 export default function Header() {
   const { theme, toggleTheme } = useTheme();
-  const { login, clear, loginStatus, identity } = useInternetIdentity();
-  const queryClient = useQueryClient();
-  const isAuthenticated = !!identity;
-
-  const handleAuth = async () => {
-    if (isAuthenticated) {
-      await clear();
-      queryClient.clear();
-    } else {
-      try {
-        await login();
-      } catch (error: any) {
-        if (error.message === "User is already authenticated") {
-          await clear();
-          setTimeout(() => login(), 300);
-        }
-      }
-    }
-  };
 
   return (
     <>
@@ -100,20 +79,6 @@ export default function Header() {
 
             {/* Actions */}
             <div className="flex items-center gap-3">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleAuth}
-                disabled={loginStatus === "logging-in"}
-                data-ocid="header.button"
-                className="text-sm"
-              >
-                {loginStatus === "logging-in"
-                  ? "Signing in..."
-                  : isAuthenticated
-                    ? "Sign Out"
-                    : "Sign In"}
-              </Button>
               <Link to="/design">
                 <Button
                   size="sm"

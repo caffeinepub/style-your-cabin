@@ -27,12 +27,48 @@ const STYLE_PROMPTS: Record<string, string> = {
     "An Indian traditional style interior room with vibrant colors, ornate patterns, rich fabrics, warm lighting, 4k quality",
 };
 
-async function generateImage(style: string): Promise<string> {
+function buildUrl(style: string, seed: number): string {
   const prompt =
     STYLE_PROMPTS[style] ??
     `A ${style} style interior room with beautiful furniture and realistic lighting`;
-  const encodedPrompt = encodeURIComponent(prompt);
-  return `https://image.pollinations.ai/prompt/${encodedPrompt}?width=1024&height=576&nologo=true&model=flux&seed=${Date.now()}`;
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=576&nologo=true&model=flux&seed=${seed}`;
+}
+
+async function loadImageWithRetry(
+  style: string,
+  maxRetries = 4,
+  timeoutMs = 45000,
+): Promise<string> {
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const url = buildUrl(style, Date.now() + attempt * 7919);
+    try {
+      await new Promise<void>((resolve, reject) => {
+        const img = new Image();
+        const timer = setTimeout(() => {
+          img.src = "";
+          reject(new Error("timeout"));
+        }, timeoutMs);
+        img.onload = () => {
+          clearTimeout(timer);
+          resolve();
+        };
+        img.onerror = () => {
+          clearTimeout(timer);
+          reject(new Error("load error"));
+        };
+        img.src = url;
+      });
+      return url;
+    } catch {
+      if (attempt < maxRetries - 1) {
+        // brief back-off before next attempt
+        await new Promise((r) => setTimeout(r, 2000 + attempt * 1000));
+      }
+    }
+  }
+  throw new Error(
+    "The AI service is currently busy. Please wait a moment and try again.",
+  );
 }
 
 export default function ResultPage() {
@@ -44,11 +80,18 @@ export default function ResultPage() {
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [styleLabel, setStyleLabel] = useState("");
+  const [attemptCount, setAttemptCount] = useState(0);
   const hasFired = useRef(false);
 
   useEffect(() => {
     if (hasFired.current) return;
     hasFired.current = true;
+    startGeneration();
+  }, []);
+
+  function startGeneration() {
+    setStatus("loading");
+    setErrorMsg("");
 
     const raw = localStorage.getItem("designData");
     if (!raw) {
@@ -73,9 +116,9 @@ export default function ResultPage() {
     setOriginalImage(data.imageBase64);
     setStyleLabel(data.selectedStyle);
 
-    generateImage(data.selectedStyle)
-      .then((img) => {
-        setGeneratedImage(img);
+    loadImageWithRetry(data.selectedStyle)
+      .then((url) => {
+        setGeneratedImage(url);
         setStatus("done");
       })
       .catch((err: unknown) => {
@@ -83,7 +126,13 @@ export default function ResultPage() {
         setErrorMsg(msg);
         setStatus("error");
       });
-  }, []);
+  }
+
+  const handleRetry = () => {
+    hasFired.current = false;
+    setAttemptCount((n) => n + 1);
+    startGeneration();
+  };
 
   const handleDownload = () => {
     if (!generatedImage) return;
@@ -144,7 +193,7 @@ export default function ResultPage() {
               <p className="font-sans text-muted-foreground mb-8 max-w-md mx-auto">
                 Generating a unique{" "}
                 <span className="font-semibold capitalize">{styleLabel}</span>{" "}
-                room design just for you. This may take up to 30 seconds.
+                room design. This may take up to 45 seconds — please wait.
               </p>
               <div className="flex justify-center">
                 <div className="w-12 h-12 border-4 border-foreground/20 border-t-foreground rounded-full animate-spin" />
@@ -155,7 +204,7 @@ export default function ResultPage() {
           {/* Error State */}
           {status === "error" && (
             <motion.div
-              key="error"
+              key={`error-${attemptCount}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
@@ -171,12 +220,21 @@ export default function ResultPage() {
               <p className="font-sans text-muted-foreground mb-6 max-w-sm mx-auto text-sm">
                 {errorMsg}
               </p>
-              <Button
-                onClick={handleRegenerate}
-                className="bg-foreground text-primary-foreground font-sans"
-              >
-                <RefreshCw className="w-4 h-4 mr-2" /> Try Again
-              </Button>
+              <div className="flex gap-3 justify-center">
+                <Button
+                  onClick={handleRetry}
+                  className="bg-foreground text-primary-foreground font-sans"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" /> Try Again
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={handleRegenerate}
+                  className="font-sans"
+                >
+                  <ArrowLeft className="w-4 h-4 mr-2" /> Back to Design
+                </Button>
+              </div>
             </motion.div>
           )}
 
@@ -255,12 +313,6 @@ export default function ResultPage() {
                     src={generatedImage}
                     alt="AI redesigned room"
                     className="w-full aspect-video object-cover"
-                    onError={() => {
-                      setStatus("error");
-                      setErrorMsg(
-                        "Image failed to load. The AI service may be busy — please try again.",
-                      );
-                    }}
                   />
                 </div>
               </div>

@@ -8,12 +8,12 @@ interface Props {
 }
 
 const MUSCLE_ICONS: Record<string, string> = {
-  abs: "\uD83D\uDD25",
-  arms: "\uD83D\uDCAA",
-  chest: "\uD83C\uDFCB\uFE0F",
-  shoulders: "\uD83C\uDFAF",
-  legs: "\uD83E\uDDB5",
-  full_body: "\u26A1",
+  abs: "🔥",
+  arms: "💪",
+  chest: "🏋️",
+  shoulders: "🎯",
+  legs: "🦵",
+  full_body: "⚡",
 };
 
 const EXERCISE_DURATION = 30;
@@ -29,6 +29,7 @@ export default function AvatarPage({ profile }: Props) {
   const [isResting, setIsResting] = useState(false);
   const [isRunning, setIsRunning] = useState(false);
   const [round, setRound] = useState(1);
+  const [speed, setSpeed] = useState(1);
 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const exercises = EXERCISE_DB[selectedMuscle] ?? [];
@@ -106,8 +107,7 @@ export default function AvatarPage({ profile }: Props) {
       {/* Header */}
       <div className="bg-[#141B20] border border-[#263038] rounded-2xl p-5">
         <h2 className="text-[#F2F4F6] font-bold text-xl mb-1">
-          \uD83C\uDFCB\uFE0F{" "}
-          <span className="text-[#FF7A1A]">Avatar Trainer</span>
+          🏃 <span className="text-[#FF7A1A]">Stickman Trainer</span>
         </h2>
         <p className="text-[#9AA4AD] text-sm">
           Select a muscle group and hit Play to start your auto-routine.
@@ -142,7 +142,7 @@ export default function AvatarPage({ profile }: Props) {
       {/* Main workout area */}
       {currentExercise && (
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {/* Left: Exercise list */}
+          {/* Left: Exercise list + speed control */}
           <div className="bg-[#141B20] border border-[#263038] rounded-2xl p-4 md:col-span-1">
             <p className="text-xs font-semibold text-[#9AA4AD] uppercase tracking-wider mb-3">
               Exercises
@@ -170,6 +170,31 @@ export default function AvatarPage({ profile }: Props) {
                   )}
                 </button>
               ))}
+            </div>
+
+            {/* Speed control */}
+            <div className="mt-4 pt-4 border-t border-[#263038]">
+              <p className="text-xs font-semibold text-[#9AA4AD] uppercase tracking-wider mb-2">
+                Speed:{" "}
+                {speed === 0.5 ? "Slow" : speed === 1 ? "Normal" : "Fast"}
+              </p>
+              <div className="flex gap-2">
+                {([0.5, 1, 1.8] as const).map((s) => (
+                  <button
+                    key={s}
+                    type="button"
+                    data-ocid="avatar.toggle"
+                    onClick={() => setSpeed(s)}
+                    className={`flex-1 py-1.5 rounded-lg text-xs font-medium transition-all ${
+                      speed === s
+                        ? "bg-[#FF7A1A] text-white"
+                        : "bg-[#1A2228] border border-[#263038] text-[#9AA4AD] hover:border-[#FF7A1A]/40"
+                    }`}
+                  >
+                    {s === 0.5 ? "🐢 Slow" : s === 1 ? "🚶 Normal" : "🔥 Fast"}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
 
@@ -201,7 +226,7 @@ export default function AvatarPage({ profile }: Props) {
                       Round {round} &middot;{" "}
                       {isResting
                         ? `Next: ${exercises[(exerciseIdx + 1) % exercises.length]?.name}`
-                        : `${currentExercise.sets} sets \u00B7 ${currentExercise.reps}`}
+                        : `${currentExercise.sets} sets · ${currentExercise.reps}`}
                     </p>
                   </div>
                 </div>
@@ -245,26 +270,19 @@ export default function AvatarPage({ profile }: Props) {
                 muscleGroup={selectedMuscle}
                 exerciseName={currentExercise.name}
                 isResting={isResting}
+                speed={speed}
               />
             </div>
 
             {/* Stats */}
             <div className="grid grid-cols-3 gap-3">
               {[
-                {
-                  label: "Sets",
-                  value: `${currentExercise.sets}`,
-                  icon: "\uD83D\uDD04",
-                },
-                {
-                  label: "Reps",
-                  value: currentExercise.reps,
-                  icon: "\uD83D\uDCCA",
-                },
+                { label: "Sets", value: `${currentExercise.sets}`, icon: "🔄" },
+                { label: "Reps", value: currentExercise.reps, icon: "📊" },
                 {
                   label: "Rest",
                   value: `${currentExercise.restSeconds}s`,
-                  icon: "\u23F1\uFE0F",
+                  icon: "⏱️",
                 },
               ].map((d) => (
                 <div

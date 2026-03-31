@@ -130,6 +130,15 @@ export const EXERCISE_DB: Record<string, Exercise[]> = {
   ],
   full_body: [
     {
+      name: "Jumping Jacks",
+      muscleGroup: "Full Body",
+      sets: 3,
+      reps: "20–30",
+      restSeconds: 30,
+      difficulty: "Beginner",
+      emoji: "⭐",
+    },
+    {
       name: "Burpees",
       muscleGroup: "Full Body",
       sets: 3,

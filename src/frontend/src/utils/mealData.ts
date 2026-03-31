@@ -143,34 +143,44 @@ export function generateMealPlan(
   ];
 }
 
-export const ALTERNATIVE_FOODS = [
+export const ALTERNATIVE_FOODS_DB = [
+  { name: "2 idli", quantity: "2 idli (~100g total)", calories: 130 },
+  { name: "1 dosa", quantity: "1 plain dosa (~80g)", calories: 168 },
   {
     name: "2 chapati",
     quantity: "2 medium chapati (~60g each)",
     calories: 200,
   },
-  { name: "1 bowl rice", quantity: "1 cup cooked rice (150g)", calories: 200 },
+  {
+    name: "1 cup oatmeal",
+    quantity: "1 cup cooked oats (250ml)",
+    calories: 150,
+  },
+  { name: "1 bowl rice", quantity: "1 cup cooked rice (150g)", calories: 206 },
   { name: "1 medium banana", quantity: "1 banana (~120g)", calories: 105 },
   { name: "1 cup dal", quantity: "1 cup cooked dal (200g)", calories: 150 },
   { name: "1 boiled egg", quantity: "1 large egg (50g)", calories: 70 },
-  { name: "Almonds", quantity: "Small handful (30g)", calories: 170 },
+  { name: "2 boiled eggs", quantity: "2 large eggs (100g)", calories: 140 },
   {
-    name: "Oatmeal bowl",
-    quantity: "1 cup oats cooked (250ml)",
-    calories: 150,
+    name: "Almonds (30g)",
+    quantity: "Small handful (30g / ~23 nuts)",
+    calories: 170,
   },
+  { name: "Greek yogurt", quantity: "1 cup (245g)", calories: 130 },
   { name: "Chicken breast", quantity: "100g grilled piece", calories: 165 },
   { name: "Paneer cubes", quantity: "2 cubes (100g)", calories: 265 },
   { name: "Whole milk", quantity: "1 glass (250ml)", calories: 150 },
   { name: "Apple", quantity: "1 medium apple (182g)", calories: 95 },
   { name: "Peanuts", quantity: "Small handful (30g)", calories: 170 },
+  { name: "Mixed nuts", quantity: "30g mixed nuts", calories: 175 },
+  { name: "Sweet potato", quantity: "1 medium (130g) boiled", calories: 112 },
 ];
 
 export function getAlternativeFoods(
   targetCalories: number,
   excludeName?: string,
 ) {
-  return [...ALTERNATIVE_FOODS]
+  return [...ALTERNATIVE_FOODS_DB]
     .filter((f) => f.name !== excludeName)
     .sort(
       (a, b) =>

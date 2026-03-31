@@ -30,10 +30,10 @@ export const EXERCISE_DB: Record<string, Exercise[]> = {
       emoji: "⚡",
     },
   ],
-  biceps: [
+  arms: [
     {
       name: "Dumbbell Curl",
-      muscleGroup: "Biceps",
+      muscleGroup: "Arms",
       sets: 3,
       reps: "12–15",
       restSeconds: 45,
@@ -42,18 +42,16 @@ export const EXERCISE_DB: Record<string, Exercise[]> = {
     },
     {
       name: "Hammer Curl",
-      muscleGroup: "Biceps",
+      muscleGroup: "Arms",
       sets: 3,
       reps: "10–12",
       restSeconds: 45,
       difficulty: "Intermediate",
       emoji: "🔨",
     },
-  ],
-  triceps: [
     {
       name: "Tricep Dips",
-      muscleGroup: "Triceps",
+      muscleGroup: "Arms",
       sets: 3,
       reps: "12–15",
       restSeconds: 30,
@@ -62,12 +60,12 @@ export const EXERCISE_DB: Record<string, Exercise[]> = {
     },
     {
       name: "Overhead Extension",
-      muscleGroup: "Triceps",
+      muscleGroup: "Arms",
       sets: 3,
       reps: "10–12",
       restSeconds: 45,
       difficulty: "Intermediate",
-      emoji: "💪",
+      emoji: "⬆️",
     },
   ],
   chest: [
@@ -163,8 +161,7 @@ export function getExercisesForTargets(targets: string[]): Exercise[] {
 
 export const MUSCLE_LABELS: Record<string, string> = {
   abs: "Abs",
-  biceps: "Biceps",
-  triceps: "Triceps",
+  arms: "Arms",
   chest: "Chest",
   shoulders: "Shoulders",
   legs: "Legs",

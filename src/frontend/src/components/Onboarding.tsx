@@ -45,13 +45,13 @@ const GOAL_OPTIONS: {
   },
   {
     value: "muscle_building",
-    label: "Muscle Building",
+    label: "Muscle Gain",
     icon: "💪",
     desc: "Build strength & mass",
   },
   {
     value: "maintain",
-    label: "Maintain Fitness",
+    label: "Maintain",
     icon: "⚙️",
     desc: "Stay healthy & fit",
   },
@@ -59,10 +59,9 @@ const GOAL_OPTIONS: {
 
 const MUSCLE_OPTIONS: { value: MuscleTarget; label: string; icon: string }[] = [
   { value: "abs", label: "Abs", icon: "🔥" },
-  { value: "biceps", label: "Biceps", icon: "💪" },
-  { value: "triceps", label: "Triceps", icon: "🔨" },
-  { value: "chest", label: "Chest", icon: "🏥" },
-  { value: "shoulders", label: "Shoulders", icon: "🏐" },
+  { value: "arms", label: "Arms (Biceps + Triceps)", icon: "💪" },
+  { value: "chest", label: "Chest", icon: "🏋️" },
+  { value: "shoulders", label: "Shoulders", icon: "🏅" },
   { value: "legs", label: "Legs", icon: "🦵" },
   { value: "full_body", label: "Full Body", icon: "⚡" },
 ];
@@ -72,6 +71,9 @@ export default function Onboarding({ onComplete }: Props) {
   const [age, setAge] = useState("");
   const [weight, setWeight] = useState("");
   const [height, setHeight] = useState("");
+  const [hip, setHip] = useState("");
+  const [waist, setWaist] = useState("");
+  const [chest, setChest] = useState("");
   const [gender, setGender] = useState<Gender>("male");
   const [lifestyle, setLifestyle] = useState<Lifestyle>("student");
   const [goal, setGoal] = useState<FitnessGoal>("maintain");
@@ -91,6 +93,10 @@ export default function Onboarding({ onComplete }: Props) {
     lifestyle,
     fitnessGoal: goal,
     muscleTargets: muscles.length > 0 ? muscles : ["full_body"],
+    hip: Number(hip) || 0,
+    waist: Number(waist) || 0,
+    chest: Number(chest) || 0,
+    startingWeight: Number(weight),
   });
 
   const stats =
@@ -120,13 +126,12 @@ export default function Onboarding({ onComplete }: Props) {
       <div className="w-full max-w-lg">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 mb-2">
-            <div className="w-10 h-10 bg-[#FF7A1A] rounded-full flex items-center justify-center">
-              <Activity className="w-5 h-5 text-white" />
-            </div>
-            <span className="text-2xl font-black text-[#FF7A1A] uppercase tracking-wide">
-              FitAI
-            </span>
+          <div className="flex items-center justify-center mb-2">
+            <img
+              src="/assets/spark-fit-logo.jpeg"
+              alt="Spark Fit"
+              className="h-16 w-auto object-contain"
+            />
           </div>
           <p className="text-[#9AA4AD] text-sm">
             Your AI-Powered Fitness Coach
@@ -150,7 +155,7 @@ export default function Onboarding({ onComplete }: Props) {
         <div className="bg-[#141B20] border border-[#263038] rounded-2xl p-6 shadow-2xl">
           {step === 1 && (
             <div className="space-y-5">
-              <div className="flex items-center gap-3 mb-6">
+              <div className="flex items-center gap-3 mb-4">
                 <div className="w-9 h-9 bg-[#FF7A1A]/20 rounded-xl flex items-center justify-center">
                   <User className="w-5 h-5 text-[#FF7A1A]" />
                 </div>
@@ -239,6 +244,67 @@ export default function Onboarding({ onComplete }: Props) {
                   />
                 </div>
               </div>
+
+              {/* Body Measurements */}
+              <div className="pt-2">
+                <p className="text-xs font-semibold text-[#FF7A1A] uppercase tracking-wider mb-3">
+                  📏 Body Measurements (Starting Stats)
+                </p>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label
+                      htmlFor="hip"
+                      className="block text-xs font-semibold text-[#9AA4AD] uppercase tracking-wider mb-2"
+                    >
+                      Hip (cm)
+                    </label>
+                    <input
+                      id="hip"
+                      type="number"
+                      value={hip}
+                      onChange={(e) => setHip(e.target.value)}
+                      placeholder="e.g. 95"
+                      className="w-full bg-[#1A2228] border border-[#263038] rounded-xl px-3 py-2.5 text-[#F2F4F6] placeholder-[#6F7A84] focus:outline-none focus:border-[#FF7A1A] transition-colors text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="waist"
+                      className="block text-xs font-semibold text-[#9AA4AD] uppercase tracking-wider mb-2"
+                    >
+                      Waist (cm)
+                    </label>
+                    <input
+                      id="waist"
+                      type="number"
+                      value={waist}
+                      onChange={(e) => setWaist(e.target.value)}
+                      placeholder="e.g. 80"
+                      className="w-full bg-[#1A2228] border border-[#263038] rounded-xl px-3 py-2.5 text-[#F2F4F6] placeholder-[#6F7A84] focus:outline-none focus:border-[#FF7A1A] transition-colors text-sm"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="chest"
+                      className="block text-xs font-semibold text-[#9AA4AD] uppercase tracking-wider mb-2"
+                    >
+                      Chest (cm)
+                    </label>
+                    <input
+                      id="chest"
+                      type="number"
+                      value={chest}
+                      onChange={(e) => setChest(e.target.value)}
+                      placeholder="e.g. 90"
+                      className="w-full bg-[#1A2228] border border-[#263038] rounded-xl px-3 py-2.5 text-[#F2F4F6] placeholder-[#6F7A84] focus:outline-none focus:border-[#FF7A1A] transition-colors text-sm"
+                    />
+                  </div>
+                </div>
+                <p className="text-[#6F7A84] text-xs mt-2">
+                  These will be stored as your starting measurements for
+                  progress tracking.
+                </p>
+              </div>
             </div>
           )}
 
@@ -326,20 +392,20 @@ export default function Onboarding({ onComplete }: Props) {
                 <p className="text-xs font-semibold text-[#9AA4AD] uppercase tracking-wider mb-3">
                   Muscle Targets (multi-select)
                 </p>
-                <div className="grid grid-cols-4 gap-2">
+                <div className="grid grid-cols-2 gap-2">
                   {MUSCLE_OPTIONS.map((opt) => (
                     <button
                       type="button"
                       key={opt.value}
                       onClick={() => toggleMuscle(opt.value)}
-                      className={`flex flex-col items-center gap-1 p-2 rounded-xl border-2 transition-all ${
+                      className={`flex items-center gap-2 p-3 rounded-xl border-2 transition-all ${
                         muscles.includes(opt.value)
                           ? "border-[#FF7A1A] bg-[#FF7A1A]/10"
                           : "border-[#263038] bg-[#1A2228] hover:border-[#FF7A1A]/40"
                       }`}
                     >
                       <span className="text-lg">{opt.icon}</span>
-                      <span className="text-[#F2F4F6] text-xs font-medium">
+                      <span className="text-[#F2F4F6] text-sm font-medium">
                         {opt.label}
                       </span>
                     </button>
@@ -450,6 +516,33 @@ export default function Onboarding({ onComplete }: Props) {
                       (Healthy BMI range)
                     </span>
                   </p>
+                </div>
+              )}
+
+              {(hip || waist || chest) && (
+                <div className="bg-[#FF7A1A]/10 border border-[#FF7A1A]/30 rounded-xl p-4">
+                  <p className="text-xs text-[#FF7A1A] uppercase tracking-wider font-semibold mb-2">
+                    ★ Starting Stats Saved
+                  </p>
+                  <div className="flex gap-4 text-sm">
+                    {hip && (
+                      <span className="text-[#F2F4F6]">
+                        Hip: <strong className="text-[#FF7A1A]">{hip}cm</strong>
+                      </span>
+                    )}
+                    {waist && (
+                      <span className="text-[#F2F4F6]">
+                        Waist:{" "}
+                        <strong className="text-[#FF7A1A]">{waist}cm</strong>
+                      </span>
+                    )}
+                    {chest && (
+                      <span className="text-[#F2F4F6]">
+                        Chest:{" "}
+                        <strong className="text-[#FF7A1A]">{chest}cm</strong>
+                      </span>
+                    )}
+                  </div>
                 </div>
               )}
             </div>

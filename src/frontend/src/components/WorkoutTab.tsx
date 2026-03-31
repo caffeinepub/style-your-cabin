@@ -1,4 +1,10 @@
-import { AlertTriangle, CheckCircle, Dumbbell, Shield } from "lucide-react";
+import {
+  AlertTriangle,
+  CheckCircle,
+  Dumbbell,
+  Shield,
+  Volume2,
+} from "lucide-react";
 import { useState } from "react";
 import type {
   DailyLog,
@@ -8,6 +14,7 @@ import type {
 } from "../types";
 import { getDumbbellWeight, getFitnessLevel } from "../utils/calculations";
 import { EXERCISE_DB, MUSCLE_LABELS } from "../utils/workoutData";
+import AvatarTrainer from "./AvatarTrainer";
 
 interface Props {
   profile: UserProfile;
@@ -18,10 +25,9 @@ interface Props {
 
 const MUSCLE_ICONS: Record<string, string> = {
   abs: "🔥",
-  biceps: "💪",
-  triceps: "🔨",
-  chest: "🏥",
-  shoulders: "🏐",
+  arms: "💪",
+  chest: "🏋️",
+  shoulders: "🏅",
   legs: "🦵",
   full_body: "⚡",
 };
@@ -37,6 +43,13 @@ const SAFETY_WARNINGS_BASE = [
   "Stop immediately if you feel pain or discomfort",
 ];
 
+const MOTIVATION_MSGS = [
+  "Keep going! You're crushing it!",
+  "You're getting stronger every rep!",
+  "Don't quit today — your future self will thank you!",
+  "Push through! Champions are made here!",
+];
+
 export default function WorkoutTab({
   profile,
   stats,
@@ -47,6 +60,7 @@ export default function WorkoutTab({
     profile.muscleTargets as string[],
   );
   const [completedToast, setCompletedToast] = useState("");
+  const [speaking, setSpeaking] = useState(false);
 
   const fitnessLevel = getFitnessLevel(profile, stats.bmi);
   const dumbbellWeight = getDumbbellWeight(fitnessLevel);
@@ -60,6 +74,10 @@ export default function WorkoutTab({
 
   const exercises = selectedMuscles.flatMap((m) => EXERCISE_DB[m] ?? []);
 
+  // First muscle + first exercise for the avatar
+  const avatarMuscle = selectedMuscles[0] ?? "full_body";
+  const avatarExercise = (EXERCISE_DB[avatarMuscle] ?? [])[0];
+
   const markComplete = (exName: string) => {
     if (log.workoutsCompleted.includes(exName)) return;
     onUpdateLog({
@@ -68,6 +86,19 @@ export default function WorkoutTab({
     });
     setCompletedToast(`${exName} completed!`);
     setTimeout(() => setCompletedToast(""), 2000);
+  };
+
+  const speakMotivation = () => {
+    if (!window.speechSynthesis) return;
+    const msg =
+      MOTIVATION_MSGS[Math.floor(Math.random() * MOTIVATION_MSGS.length)];
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(msg);
+    utt.rate = 0.95;
+    utt.pitch = 1.1;
+    utt.onstart = () => setSpeaking(true);
+    utt.onend = () => setSpeaking(false);
+    window.speechSynthesis.speak(utt);
   };
 
   const extraWarnings: string[] = [];
@@ -91,6 +122,36 @@ export default function WorkoutTab({
       {completedToast && (
         <div className="fixed top-4 right-4 z-50 bg-[#22c55e] text-white px-4 py-2 rounded-full text-sm font-medium shadow-lg">
           ✓ {completedToast}
+        </div>
+      )}
+
+      {/* Avatar Trainer Preview */}
+      {avatarExercise && (
+        <div className="bg-[#141B20] border border-[#FF7A1A]/30 rounded-2xl p-5">
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-xs font-semibold text-[#9AA4AD] uppercase tracking-wider">
+              🤖 Avatar Trainer
+            </p>
+            <button
+              type="button"
+              data-ocid="workout.primary_button"
+              onClick={speakMotivation}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full text-sm font-bold transition-all ${
+                speaking
+                  ? "bg-[#FF7A1A]/30 text-[#FF7A1A] border border-[#FF7A1A]"
+                  : "bg-[#FF7A1A] hover:bg-[#D85F16] text-white"
+              }`}
+            >
+              <Volume2 className="w-4 h-4" />
+              {speaking ? "Speaking..." : "🔊 Motivate Me!"}
+            </button>
+          </div>
+          <div className="flex justify-center">
+            <AvatarTrainer
+              muscleGroup={avatarMuscle}
+              exerciseName={avatarExercise.name}
+            />
+          </div>
         </div>
       )}
 
@@ -151,6 +212,7 @@ export default function WorkoutTab({
             <button
               key={m}
               type="button"
+              data-ocid="workout.tab"
               onClick={() => toggleMuscle(m)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
                 selectedMuscles.includes(m)
@@ -167,7 +229,10 @@ export default function WorkoutTab({
 
       {/* Exercise Cards */}
       {exercises.length === 0 ? (
-        <div className="bg-[#141B20] border border-[#263038] rounded-2xl p-8 text-center">
+        <div
+          className="bg-[#141B20] border border-[#263038] rounded-2xl p-8 text-center"
+          data-ocid="workout.empty_state"
+        >
           <p className="text-[#9AA4AD]">
             Select muscle groups above to generate your workout
           </p>
@@ -183,11 +248,12 @@ export default function WorkoutTab({
             </p>
           </div>
           <div className="space-y-3">
-            {exercises.map((ex) => {
+            {exercises.map((ex, idx) => {
               const done = log.workoutsCompleted.includes(ex.name);
               return (
                 <div
                   key={`${ex.name}-${ex.muscleGroup}`}
+                  data-ocid={`workout.item.${idx + 1}`}
                   className={`border rounded-xl p-4 transition-all ${
                     done
                       ? "border-[#22c55e]/40 bg-[#22c55e]/5"
@@ -226,6 +292,7 @@ export default function WorkoutTab({
                     </div>
                     <button
                       type="button"
+                      data-ocid={`workout.toggle.${idx + 1}`}
                       onClick={() => markComplete(ex.name)}
                       className={`shrink-0 transition-all ${done ? "opacity-100" : "opacity-50 hover:opacity-100"}`}
                     >
@@ -240,6 +307,7 @@ export default function WorkoutTab({
           </div>
           <button
             type="button"
+            data-ocid="workout.primary_button"
             onClick={() =>
               onUpdateLog({
                 ...log,
@@ -278,7 +346,7 @@ export default function WorkoutTab({
             {
               name: "Yoga Flow",
               desc: "20 min, low impact, stress relief",
-              icon: "🥏",
+              icon: "🧸",
             },
           ].map((s) => (
             <div

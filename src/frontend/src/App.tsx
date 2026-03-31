@@ -1,12 +1,13 @@
 import {
-  Activity,
   Apple,
+  Bot,
   Dumbbell,
   LayoutDashboard,
   Settings,
   TrendingUp,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import AvatarPage from "./components/AvatarPage";
 import Dashboard from "./components/Dashboard";
 import NutritionTab from "./components/NutritionTab";
 import Onboarding from "./components/Onboarding";
@@ -23,9 +24,9 @@ import { calculateHealthStats } from "./utils/calculations";
 import { generateMealPlan } from "./utils/mealData";
 import { getExercisesForTargets } from "./utils/workoutData";
 
-const LS_PROFILE = "fitai_profile";
-const LS_DAILY = "fitai_daily_log";
-const LS_WEEKLY = "fitai_weekly_logs";
+const LS_PROFILE = "sparkfit_profile";
+const LS_DAILY = "sparkfit_daily_log";
+const LS_WEEKLY = "sparkfit_weekly_logs";
 
 function getTodayDate() {
   return new Date().toISOString().split("T")[0];
@@ -76,29 +77,28 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<ActiveTab>("dashboard");
 
-  // Persist profile
   useEffect(() => {
     if (profile) localStorage.setItem(LS_PROFILE, JSON.stringify(profile));
   }, [profile]);
 
-  // Persist daily log
   useEffect(() => {
     localStorage.setItem(LS_DAILY, JSON.stringify(dailyLog));
-    // Also update weekly logs
     setWeeklyLogs((prev) => {
       const updated = prev.filter((l) => l.date !== today);
+      const existing = prev.find((l) => l.date === today);
       updated.push({
         date: today,
         calories: dailyLog.totalCaloriesConsumed,
         water: dailyLog.waterGlasses,
         workouts: dailyLog.workoutsCompleted.length,
-        weight: profile?.weight ?? 0,
+        weight: existing?.weight ?? profile?.weight ?? 0,
+        hip: existing?.hip,
+        waist: existing?.waist,
       });
       return updated;
     });
   }, [dailyLog, today, profile?.weight]);
 
-  // Persist weekly logs
   useEffect(() => {
     localStorage.setItem(LS_WEEKLY, JSON.stringify(weeklyLogs));
   }, [weeklyLogs]);
@@ -141,8 +141,10 @@ export default function App() {
   const resetProfile = () => {
     localStorage.removeItem(LS_PROFILE);
     localStorage.removeItem(LS_DAILY);
+    localStorage.removeItem(LS_WEEKLY);
     setProfile(null);
     setDailyLog(defaultLog(today));
+    setWeeklyLogs([]);
   };
 
   if (!profile || !stats) {
@@ -166,6 +168,11 @@ export default function App() {
       label: "Progress",
       icon: <TrendingUp className="w-5 h-5" />,
     },
+    {
+      id: "avatar",
+      label: "Avatar",
+      icon: <Bot className="w-5 h-5" />,
+    },
   ];
 
   return (
@@ -174,12 +181,11 @@ export default function App() {
       <header className="sticky top-0 z-40 bg-[#0B0F12]/95 backdrop-blur border-b border-[#263038]">
         <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-[#FF7A1A] rounded-full flex items-center justify-center">
-              <Activity className="w-4 h-4 text-white" />
-            </div>
-            <span className="text-lg font-black text-[#FF7A1A] uppercase tracking-wide">
-              FitAI
-            </span>
+            <img
+              src="/assets/spark-fit-logo.jpeg"
+              alt="Spark Fit"
+              className="h-10 w-auto object-contain"
+            />
             <span className="hidden sm:block text-[#6F7A84] text-xs ml-2">
               {profile.fitnessGoal === "weight_loss"
                 ? "🔥 Weight Loss"
@@ -216,8 +222,9 @@ export default function App() {
               <button
                 type="button"
                 key={item.id}
+                data-ocid={`nav.${item.id}.link`}
                 onClick={() => setActiveTab(item.id)}
-                className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-medium border-b-2 transition-all ${
+                className={`flex items-center gap-1.5 px-3 py-2.5 text-sm font-medium border-b-2 transition-all ${
                   activeTab === item.id
                     ? "border-[#FF7A1A] text-[#FF7A1A]"
                     : "border-transparent text-[#9AA4AD] hover:text-[#F2F4F6]"
@@ -268,7 +275,21 @@ export default function App() {
             onUpdateWeekly={handleUpdateWeekly}
           />
         )}
+        {activeTab === "avatar" && <AvatarPage profile={profile} />}
       </main>
+
+      {/* Footer */}
+      <footer className="hidden sm:block text-center py-4 text-[#6F7A84] text-xs border-t border-[#263038] pb-6">
+        © {new Date().getFullYear()}. Built with ❤️ using{" "}
+        <a
+          href={`https://caffeine.ai?utm_source=caffeine-footer&utm_medium=referral&utm_content=${encodeURIComponent(window.location.hostname)}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-[#FF7A1A] hover:underline"
+        >
+          caffeine.ai
+        </a>
+      </footer>
 
       {/* Bottom Mobile Nav */}
       <div className="fixed bottom-0 left-0 right-0 z-40 sm:hidden bg-[#0B0F12]/95 backdrop-blur border-t border-[#263038]">
@@ -277,6 +298,7 @@ export default function App() {
             <button
               type="button"
               key={item.id}
+              data-ocid={`nav.${item.id}.link`}
               onClick={() => setActiveTab(item.id)}
               className={`flex-1 flex flex-col items-center gap-1 py-3 transition-all ${
                 activeTab === item.id ? "text-[#FF7A1A]" : "text-[#6F7A84]"

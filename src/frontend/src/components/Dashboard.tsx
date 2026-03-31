@@ -4,6 +4,7 @@ import {
   Droplets,
   Lightbulb,
   Plus,
+  Volume2,
   Zap,
 } from "lucide-react";
 import { useState } from "react";
@@ -35,6 +36,14 @@ const AI_TIPS: Record<string, string> = {
     "Consistency beats perfection — even 20 mins of movement daily makes a difference.",
 };
 
+const MOTIVATION_MSGS = [
+  "Keep going! You're crushing it! 💪",
+  "You're getting stronger every rep!",
+  "Don't quit today — your future self will thank you!",
+  "Push through! Champions are made here! 🏆",
+  "Every rep counts. Every drop of sweat matters!",
+];
+
 export default function Dashboard({
   profile,
   stats,
@@ -45,6 +54,8 @@ export default function Dashboard({
   onTabChange,
 }: Props) {
   const [showWaterToast, setShowWaterToast] = useState(false);
+  const [lastMotivation, setLastMotivation] = useState("");
+  const [speaking, setSpeaking] = useState(false);
 
   const addWater = () => {
     if (log.waterGlasses < stats.waterGlasses + 2) {
@@ -52,6 +63,20 @@ export default function Dashboard({
       setShowWaterToast(true);
       setTimeout(() => setShowWaterToast(false), 2000);
     }
+  };
+
+  const speakMotivation = () => {
+    if (!window.speechSynthesis) return;
+    const msg =
+      MOTIVATION_MSGS[Math.floor(Math.random() * MOTIVATION_MSGS.length)];
+    setLastMotivation(msg);
+    window.speechSynthesis.cancel();
+    const utt = new SpeechSynthesisUtterance(msg);
+    utt.rate = 0.95;
+    utt.pitch = 1.1;
+    utt.onstart = () => setSpeaking(true);
+    utt.onend = () => setSpeaking(false);
+    window.speechSynthesis.speak(utt);
   };
 
   const goalLabel =
@@ -72,8 +97,7 @@ export default function Dashboard({
       {/* Welcome */}
       <div className="bg-[#141B20] border border-[#263038] rounded-2xl p-5">
         <h2 className="text-[#F2F4F6] text-xl font-bold mb-1">
-          Welcome Back!{" "}
-          <span className="text-[#FF7A1A]">Your AI Coach is ready.</span>
+          Welcome to <span className="text-[#FF7A1A]">Spark Fit!</span>
         </h2>
         <p className="text-[#9AA4AD] text-sm mb-4">
           Goal: {goalLabel} •{" "}
@@ -103,6 +127,41 @@ export default function Dashboard({
             </span>
           </div>
         </div>
+      </div>
+
+      {/* Voice Coach Card */}
+      <div className="bg-[#141B20] border border-[#263038] rounded-2xl p-5">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 bg-[#FF7A1A]/20 rounded-full flex items-center justify-center text-xl">
+            🤖
+          </div>
+          <div>
+            <p className="text-[#F2F4F6] font-semibold">
+              Voice Motivation Coach
+            </p>
+            <p className="text-[#9AA4AD] text-xs">
+              Your personal AI pep-talk machine
+            </p>
+          </div>
+        </div>
+        <button
+          type="button"
+          data-ocid="dashboard.primary_button"
+          onClick={speakMotivation}
+          className={`flex items-center gap-2 px-5 py-2.5 rounded-full font-bold text-sm transition-all ${
+            speaking
+              ? "bg-[#FF7A1A]/30 border border-[#FF7A1A] text-[#FF7A1A]"
+              : "bg-[#FF7A1A] hover:bg-[#D85F16] text-white"
+          }`}
+        >
+          <Volume2 className="w-4 h-4" />
+          {speaking ? "Speaking..." : "💪 Motivate Me!"}
+        </button>
+        {lastMotivation && (
+          <div className="mt-3 bg-[#1A2228] border border-[#FF7A1A]/20 rounded-xl px-4 py-3">
+            <p className="text-[#F2F4F6] text-sm italic">“{lastMotivation}”</p>
+          </div>
+        )}
       </div>
 
       {/* Progress Rings */}
@@ -144,6 +203,7 @@ export default function Dashboard({
           </div>
           <button
             type="button"
+            data-ocid="dashboard.secondary_button"
             onClick={addWater}
             className="flex items-center gap-1.5 bg-[#3AA0FF]/20 hover:bg-[#3AA0FF]/30 border border-[#3AA0FF]/40 text-[#3AA0FF] rounded-full px-3 py-1.5 text-sm font-medium transition-colors"
           >
@@ -181,6 +241,7 @@ export default function Dashboard({
           </div>
           <button
             type="button"
+            data-ocid="dashboard.workout.link"
             onClick={() => onTabChange("workout")}
             className="text-[#FF7A1A] text-xs font-medium hover:underline"
           >
@@ -239,6 +300,7 @@ export default function Dashboard({
           </p>
           <button
             type="button"
+            data-ocid="dashboard.nutrition.link"
             onClick={() => onTabChange("nutrition")}
             className="text-[#FF7A1A] text-xs font-medium hover:underline"
           >

@@ -45,6 +45,62 @@ function BarChart({
   );
 }
 
+function StatComparison({
+  label,
+  starting,
+  current,
+  unit,
+}: { label: string; starting: number; current: number; unit: string }) {
+  const diff = current - starting;
+  const improved = diff < 0; // lower is better for weight/waist/hip
+  const unchanged = diff === 0;
+  return (
+    <div className="flex items-center justify-between p-3 bg-[#1A2228] rounded-xl">
+      <div className="text-center">
+        <p className="text-[#9AA4AD] text-xs mb-1">Starting</p>
+        <p className="text-[#F2F4F6] font-bold text-lg">
+          {starting}
+          {unit}
+        </p>
+      </div>
+      <div className="flex flex-col items-center gap-1">
+        <p className="text-[#9AA4AD] text-xs font-semibold uppercase tracking-wider">
+          {label}
+        </p>
+        <span className="text-[#9AA4AD] text-xl">→</span>
+        {!unchanged && (
+          <span
+            className="text-xs font-bold px-2 py-0.5 rounded-full"
+            style={{
+              backgroundColor: improved
+                ? "rgba(34,197,94,0.15)"
+                : "rgba(239,68,68,0.15)",
+              color: improved ? "#22c55e" : "#ef4444",
+            }}
+          >
+            {diff > 0 ? "+" : ""}
+            {diff.toFixed(1)}
+            {unit}
+          </span>
+        )}
+        {unchanged && <span className="text-xs text-[#6F7A84]">No change</span>}
+      </div>
+      <div className="text-center">
+        <p className="text-[#9AA4AD] text-xs mb-1">Current</p>
+        <p
+          className="font-bold text-lg"
+          style={{
+            color: improved ? "#22c55e" : unchanged ? "#F2F4F6" : "#ef4444",
+          }}
+        >
+          {current}
+          {unit}
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export default function ProgressTab({
   profile,
   stats,
@@ -52,6 +108,8 @@ export default function ProgressTab({
   onUpdateWeekly,
 }: Props) {
   const [newWeight, setNewWeight] = useState("");
+  const [newHip, setNewHip] = useState("");
+  const [newWaist, setNewWaist] = useState("");
   const [showInput, setShowInput] = useState(false);
   const today = new Date().toISOString().split("T")[0];
 
@@ -66,12 +124,16 @@ export default function ProgressTab({
       water: logEntry?.water ?? 0,
       workouts: logEntry?.workouts ?? 0,
       weight: logEntry?.weight ?? 0,
+      hip: logEntry?.hip ?? 0,
+      waist: logEntry?.waist ?? 0,
     };
   });
 
   const calData = last7.map((d) => d.calories);
   const waterData = last7.map((d) => d.water);
   const workoutData = last7.map((d) => d.workouts);
+  const hipData = last7.map((d) => d.hip);
+  const waistData = last7.map((d) => d.waist);
 
   const nonZeroCals = calData.filter((c) => c > 0);
   const nonZeroWater = waterData.filter((w) => w > 0);
@@ -85,29 +147,95 @@ export default function ProgressTab({
       ? nonZeroWater.reduce((a, b) => a + b, 0) / nonZeroWater.length
       : 0;
 
-  const logWeight = () => {
+  const todayEntry = weeklyLogs.find((l) => l.date === today);
+  const currentWeight =
+    todayEntry?.weight && todayEntry.weight > 0
+      ? todayEntry.weight
+      : profile.startingWeight || profile.weight;
+  const currentHip =
+    todayEntry?.hip && todayEntry.hip > 0 ? todayEntry.hip : profile.hip;
+  const currentWaist =
+    todayEntry?.waist && todayEntry.waist > 0
+      ? todayEntry.waist
+      : profile.waist;
+
+  const logBodyStats = () => {
     const w = Number(newWeight);
+    const h = Number(newHip);
+    const ws = Number(newWaist);
     if (!w || w < 20 || w > 300) return;
+    const existing = weeklyLogs.find((l) => l.date === today);
     const updated = weeklyLogs.filter((l) => l.date !== today);
     updated.push({
       date: today,
-      calories: 0,
-      water: 0,
-      workouts: 0,
+      calories: existing?.calories ?? 0,
+      water: existing?.water ?? 0,
+      workouts: existing?.workouts ?? 0,
       weight: w,
+      hip: h > 0 ? h : existing?.hip,
+      waist: ws > 0 ? ws : existing?.waist,
     });
     onUpdateWeekly(updated);
     setNewWeight("");
+    setNewHip("");
+    setNewWaist("");
     setShowInput(false);
   };
 
-  const currentWeight =
-    weeklyLogs.find((l) => l.date === today)?.weight ?? profile.weight;
-  const weightDiff = currentWeight - profile.weight;
+  // Weekly report helpers
+  const weekStart = last7[0].date;
+  const weekEnd = last7[6].date;
+  const calCompliantDays = calData.filter(
+    (c) => c > 0 && c <= stats.targetCalories * 1.1,
+  ).length;
+  const waterGoalDays = waterData.filter((w) => w >= stats.waterGlasses).length;
+  const weekWeights = last7.filter((d) => d.weight > 0).map((d) => d.weight);
+  const weightChange =
+    weekWeights.length >= 2
+      ? weekWeights[weekWeights.length - 1] - weekWeights[0]
+      : 0;
 
   return (
     <div className="space-y-4">
-      {/* Stats Summary */}
+      {/* Starting vs Current Comparison */}
+      {(profile.startingWeight > 0 || profile.hip > 0 || profile.waist > 0) && (
+        <div className="bg-[#141B20] border border-[#FF7A1A]/30 rounded-2xl p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <span className="text-xl">🏆</span>
+            <p className="text-xs font-semibold text-[#FF7A1A] uppercase tracking-wider">
+              Before vs Current
+            </p>
+          </div>
+          <div className="space-y-3">
+            {profile.startingWeight > 0 && (
+              <StatComparison
+                label="Weight"
+                starting={profile.startingWeight}
+                current={currentWeight}
+                unit="kg"
+              />
+            )}
+            {profile.waist > 0 && (
+              <StatComparison
+                label="Waist"
+                starting={profile.waist}
+                current={currentWaist}
+                unit="cm"
+              />
+            )}
+            {profile.hip > 0 && (
+              <StatComparison
+                label="Hip"
+                starting={profile.hip}
+                current={currentHip}
+                unit="cm"
+              />
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Weekly Summary */}
       <div className="bg-[#141B20] border border-[#263038] rounded-2xl p-5">
         <div className="flex items-center gap-2 mb-4">
           <TrendingUp className="w-5 h-5 text-[#FF7A1A]" />
@@ -150,43 +278,89 @@ export default function ProgressTab({
         </div>
       </div>
 
-      {/* Weight Tracker */}
+      {/* Daily Body Log */}
       <div className="bg-[#141B20] border border-[#263038] rounded-2xl p-5">
         <div className="flex items-center justify-between mb-4">
           <p className="text-xs font-semibold text-[#9AA4AD] uppercase tracking-wider">
-            Weight Progress
+            Daily Body Stats
           </p>
           <button
             type="button"
+            data-ocid="progress.open_modal_button"
             onClick={() => setShowInput(!showInput)}
             className="flex items-center gap-1 bg-[#FF7A1A]/20 border border-[#FF7A1A]/40 text-[#FF7A1A] rounded-full px-3 py-1.5 text-xs font-medium"
           >
-            <Plus className="w-3.5 h-3.5" /> Log Weight
+            <Plus className="w-3.5 h-3.5" /> Log Today
           </button>
         </div>
         {showInput && (
-          <div className="flex gap-2 mb-4">
-            <input
-              type="number"
-              value={newWeight}
-              onChange={(e) => setNewWeight(e.target.value)}
-              placeholder="Enter weight (kg)"
-              className="flex-1 bg-[#1A2228] border border-[#263038] rounded-xl px-4 py-2.5 text-[#F2F4F6] placeholder-[#6F7A84] focus:outline-none focus:border-[#FF7A1A] text-sm"
-            />
+          <div className="space-y-3 mb-4 bg-[#1A2228] border border-[#263038] rounded-xl p-4">
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label
+                  htmlFor="log-weight"
+                  className="block text-xs text-[#9AA4AD] mb-1"
+                >
+                  Weight (kg)*
+                </label>
+                <input
+                  type="number"
+                  value={newWeight}
+                  onChange={(e) => setNewWeight(e.target.value)}
+                  placeholder="kg"
+                  id="log-weight"
+                  data-ocid="progress.input"
+                  className="w-full bg-[#0B0F12] border border-[#263038] rounded-xl px-3 py-2 text-[#F2F4F6] placeholder-[#6F7A84] focus:outline-none focus:border-[#FF7A1A] text-sm"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="log-hip"
+                  className="block text-xs text-[#9AA4AD] mb-1"
+                >
+                  Hip (cm)
+                </label>
+                <input
+                  type="number"
+                  value={newHip}
+                  onChange={(e) => setNewHip(e.target.value)}
+                  id="log-hip"
+                  placeholder="cm"
+                  className="w-full bg-[#0B0F12] border border-[#263038] rounded-xl px-3 py-2 text-[#F2F4F6] placeholder-[#6F7A84] focus:outline-none focus:border-[#FF7A1A] text-sm"
+                />
+              </div>
+              <div>
+                <label
+                  htmlFor="log-waist"
+                  className="block text-xs text-[#9AA4AD] mb-1"
+                >
+                  Waist (cm)
+                </label>
+                <input
+                  type="number"
+                  value={newWaist}
+                  onChange={(e) => setNewWaist(e.target.value)}
+                  id="log-waist"
+                  placeholder="cm"
+                  className="w-full bg-[#0B0F12] border border-[#263038] rounded-xl px-3 py-2 text-[#F2F4F6] placeholder-[#6F7A84] focus:outline-none focus:border-[#FF7A1A] text-sm"
+                />
+              </div>
+            </div>
             <button
               type="button"
-              onClick={logWeight}
-              className="bg-[#FF7A1A] hover:bg-[#D85F16] text-white rounded-xl px-4 py-2.5 text-sm font-bold"
+              data-ocid="progress.submit_button"
+              onClick={logBodyStats}
+              className="w-full bg-[#FF7A1A] hover:bg-[#D85F16] text-white rounded-xl px-4 py-2.5 text-sm font-bold"
             >
-              Save
+              Save Stats
             </button>
           </div>
         )}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4">
           <div>
             <p className="text-[#9AA4AD] text-xs">Starting Weight</p>
             <p className="text-2xl font-bold text-[#F2F4F6]">
-              {profile.weight} kg
+              {profile.startingWeight || profile.weight} kg
             </p>
           </div>
           <div className="text-[#9AA4AD] text-2xl">→</div>
@@ -196,15 +370,75 @@ export default function ProgressTab({
               {currentWeight} kg
             </p>
           </div>
-          {weightDiff !== 0 && (
+          {currentWeight - (profile.startingWeight || profile.weight) !== 0 && (
             <div className="ml-auto">
               <p className="text-[#9AA4AD] text-xs">Change</p>
               <p
-                className={`text-xl font-bold ${weightDiff < 0 ? "text-[#22c55e]" : "text-[#ef4444]"}`}
+                className={`text-xl font-bold ${currentWeight < (profile.startingWeight || profile.weight) ? "text-[#22c55e]" : "text-[#ef4444]"}`}
               >
-                {weightDiff > 0 ? "+" : ""}
-                {weightDiff.toFixed(1)} kg
+                {currentWeight > (profile.startingWeight || profile.weight)
+                  ? "+"
+                  : ""}
+                {(
+                  currentWeight - (profile.startingWeight || profile.weight)
+                ).toFixed(1)}{" "}
+                kg
               </p>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Weekly Report Card */}
+      <div className="bg-[#141B20] border border-[#263038] rounded-2xl p-5">
+        <p className="text-xs font-semibold text-[#9AA4AD] uppercase tracking-wider mb-4">
+          📅 Weekly Report
+        </p>
+        <div className="bg-[#1A2228] rounded-xl p-4 space-y-3">
+          <div className="flex items-center justify-between">
+            <span className="text-[#9AA4AD] text-sm">Period</span>
+            <span className="text-[#F2F4F6] text-sm font-medium">
+              {weekStart} – {weekEnd}
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[#9AA4AD] text-sm">Total Workouts</span>
+            <span className="text-[#22c55e] font-bold">
+              {totalWorkouts}/7 days
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[#9AA4AD] text-sm">Calorie Compliance</span>
+            <span className="text-[#FF7A1A] font-bold">
+              {calCompliantDays}/7 days
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[#9AA4AD] text-sm">Water Goal</span>
+            <span className="text-[#3AA0FF] font-bold">
+              {waterGoalDays}/7 days
+            </span>
+          </div>
+          {weekWeights.length >= 2 && (
+            <div className="flex items-center justify-between">
+              <span className="text-[#9AA4AD] text-sm">Body Change</span>
+              <span
+                className="font-bold"
+                style={{
+                  color:
+                    weightChange < 0
+                      ? "#22c55e"
+                      : weightChange > 0
+                        ? "#ef4444"
+                        : "#9AA4AD",
+                }}
+              >
+                {weightChange < 0
+                  ? `Lost ${Math.abs(weightChange).toFixed(1)}kg this week`
+                  : weightChange > 0
+                    ? `Gained ${weightChange.toFixed(1)}kg this week`
+                    : "Maintained weight"}
+              </span>
             </div>
           )}
         </div>
@@ -234,6 +468,22 @@ export default function ProgressTab({
             color="#3AA0FF"
             label="Water Glasses"
           />
+          {hipData.some((v) => v > 0) && (
+            <BarChart
+              data={hipData}
+              max={Math.max(...hipData.filter((v) => v > 0), 120)}
+              color="#a855f7"
+              label="Hip Size (cm)"
+            />
+          )}
+          {waistData.some((v) => v > 0) && (
+            <BarChart
+              data={waistData}
+              max={Math.max(...waistData.filter((v) => v > 0), 100)}
+              color="#f59e0b"
+              label="Waist Size (cm)"
+            />
+          )}
         </div>
       </div>
 

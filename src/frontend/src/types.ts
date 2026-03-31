@@ -3,14 +3,18 @@ export type Lifestyle = "student" | "wfh" | "office" | "active" | "athlete";
 export type FitnessGoal = "weight_loss" | "muscle_building" | "maintain";
 export type MuscleTarget =
   | "abs"
-  | "biceps"
-  | "triceps"
+  | "arms"
   | "chest"
   | "shoulders"
   | "legs"
   | "full_body";
 export type DifficultyLevel = "Beginner" | "Intermediate" | "Advanced";
-export type ActiveTab = "dashboard" | "nutrition" | "workout" | "progress";
+export type ActiveTab =
+  | "dashboard"
+  | "nutrition"
+  | "workout"
+  | "progress"
+  | "avatar";
 
 export interface UserProfile {
   age: number;
@@ -20,6 +24,10 @@ export interface UserProfile {
   lifestyle: Lifestyle;
   fitnessGoal: FitnessGoal;
   muscleTargets: MuscleTarget[];
+  hip: number;
+  waist: number;
+  chest: number;
+  startingWeight: number;
 }
 
 export interface HealthStats {
@@ -89,4 +97,6 @@ export interface WeeklyLogEntry {
   water: number;
   workouts: number;
   weight: number;
+  hip?: number;
+  waist?: number;
 }

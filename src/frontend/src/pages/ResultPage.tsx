@@ -16,59 +16,103 @@ import Header from "../components/Header";
 
 const STYLE_PROMPTS: Record<string, string> = {
   modern:
-    "A modern style interior room with beautiful furniture, clean lines, neutral palette, realistic lighting, 4k quality",
+    "modern style interior room, clean lines, neutral palette, beautiful furniture, realistic lighting, 4k quality",
   minimalist:
-    "A minimalist style interior room with minimal clutter, white walls, simple elegant furniture, natural light, 4k quality",
+    "minimalist interior room, minimal clutter, white walls, simple elegant furniture, natural light, 4k quality",
   luxury:
-    "A luxury style interior room with rich textures, gold accents, elegant decor, warm lighting, premium furniture, 4k quality",
+    "luxury interior room, rich textures, gold accents, elegant decor, warm lighting, premium furniture, 4k quality",
   scandinavian:
-    "A scandinavian style interior room with light wood furniture, cozy textiles, neutral colors, bright natural lighting, 4k quality",
+    "scandinavian interior room, light wood furniture, cozy textiles, neutral colors, bright natural lighting, 4k quality",
   indianTraditional:
-    "An Indian traditional style interior room with vibrant colors, ornate patterns, rich fabrics, warm lighting, 4k quality",
+    "Indian traditional interior room, vibrant colors, ornate patterns, rich fabrics, warm lighting, 4k quality",
 };
 
-function buildUrl(style: string, seed: number): string {
+const UNSPLASH_FALLBACKS: Record<string, string> = {
+  modern:
+    "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1024&h=576&fit=crop",
+  minimalist:
+    "https://images.unsplash.com/photo-1586023492125-27b2c045efd7?w=1024&h=576&fit=crop",
+  luxury:
+    "https://images.unsplash.com/photo-1631049307264-da0ec9d70304?w=1024&h=576&fit=crop",
+  scandinavian:
+    "https://images.unsplash.com/photo-1555041469-a586c61ea9bc?w=1024&h=576&fit=crop",
+  indianTraditional:
+    "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=1024&h=576&fit=crop",
+  default:
+    "https://images.unsplash.com/photo-1618221195710-dd6b41faaea6?w=1024&h=576&fit=crop",
+};
+
+const AI_MODELS = ["flux", "turbo", "flux-realism"];
+
+function buildPollinationsUrl(
+  style: string,
+  model: string,
+  seed: number,
+): string {
   const prompt =
     STYLE_PROMPTS[style] ??
-    `A ${style} style interior room with beautiful furniture and realistic lighting`;
-  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=576&nologo=true&model=flux&seed=${seed}`;
+    `${style} style interior room with beautiful furniture and realistic lighting, 4k quality`;
+  return `https://image.pollinations.ai/prompt/${encodeURIComponent(prompt)}?width=1024&height=576&nologo=true&model=${model}&seed=${seed}`;
 }
 
-async function loadImageWithRetry(
+function tryLoadImage(url: string, timeoutMs: number): Promise<string> {
+  return new Promise<string>((resolve, reject) => {
+    const img = new Image();
+    const timer = setTimeout(() => {
+      img.src = "";
+      reject(new Error("timeout"));
+    }, timeoutMs);
+    img.onload = () => {
+      clearTimeout(timer);
+      resolve(url);
+    };
+    img.onerror = () => {
+      clearTimeout(timer);
+      reject(new Error("load error"));
+    };
+    img.crossOrigin = "anonymous";
+    img.src = url;
+  });
+}
+
+async function generateImage(
   style: string,
-  maxRetries = 4,
-  timeoutMs = 45000,
-): Promise<string> {
-  for (let attempt = 0; attempt < maxRetries; attempt++) {
-    const url = buildUrl(style, Date.now() + attempt * 7919);
+): Promise<{ url: string; isFallback: boolean }> {
+  const seed = Date.now();
+
+  // Try all Pollinations models with increasing timeouts
+  for (let i = 0; i < AI_MODELS.length; i++) {
+    const model = AI_MODELS[i];
+    const url = buildPollinationsUrl(style, model, seed + i * 9973);
     try {
-      await new Promise<void>((resolve, reject) => {
-        const img = new Image();
-        const timer = setTimeout(() => {
-          img.src = "";
-          reject(new Error("timeout"));
-        }, timeoutMs);
-        img.onload = () => {
-          clearTimeout(timer);
-          resolve();
-        };
-        img.onerror = () => {
-          clearTimeout(timer);
-          reject(new Error("load error"));
-        };
-        img.src = url;
-      });
-      return url;
+      const result = await tryLoadImage(url, 40000);
+      return { url: result, isFallback: false };
     } catch {
-      if (attempt < maxRetries - 1) {
-        // brief back-off before next attempt
-        await new Promise((r) => setTimeout(r, 2000 + attempt * 1000));
+      // brief back-off
+      if (i < AI_MODELS.length - 1) {
+        await new Promise((r) => setTimeout(r, 1500));
       }
     }
   }
-  throw new Error(
-    "The AI service is currently busy. Please wait a moment and try again.",
-  );
+
+  // Second round: retry flux with a fresh seed
+  try {
+    const retryUrl = buildPollinationsUrl(style, "flux", seed + 99991);
+    const result = await tryLoadImage(retryUrl, 35000);
+    return { url: result, isFallback: false };
+  } catch {
+    // ignore
+  }
+
+  // Fallback to Unsplash curated interior image (always works)
+  const fallbackUrl = UNSPLASH_FALLBACKS[style] ?? UNSPLASH_FALLBACKS.default;
+  try {
+    const result = await tryLoadImage(fallbackUrl, 10000);
+    return { url: result, isFallback: true };
+  } catch {
+    // Unsplash also failed — use URL directly anyway
+    return { url: fallbackUrl, isFallback: true };
+  }
 }
 
 export default function ResultPage() {
@@ -76,26 +120,26 @@ export default function ResultPage() {
   const navigate = useNavigate();
 
   const [status, setStatus] = useState<"loading" | "done" | "error">("loading");
-  const [errorMsg, setErrorMsg] = useState("");
   const [originalImage, setOriginalImage] = useState<string | null>(null);
   const [generatedImage, setGeneratedImage] = useState<string | null>(null);
   const [styleLabel, setStyleLabel] = useState("");
-  const [attemptCount, setAttemptCount] = useState(0);
-  const hasFired = useRef(false);
+  const [isFallback, setIsFallback] = useState(false);
+  const [attemptKey, setAttemptKey] = useState(0);
+  const generationRef = useRef(false);
 
   useEffect(() => {
-    if (hasFired.current) return;
-    hasFired.current = true;
+    if (generationRef.current) return;
+    generationRef.current = true;
     startGeneration();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   function startGeneration() {
     setStatus("loading");
-    setErrorMsg("");
+    setIsFallback(false);
 
     const raw = localStorage.getItem("designData");
     if (!raw) {
-      setErrorMsg("No design data found. Please start from the design page.");
       setStatus("error");
       return;
     }
@@ -108,7 +152,6 @@ export default function ResultPage() {
     try {
       data = JSON.parse(raw);
     } catch {
-      setErrorMsg("Invalid design data. Please try again.");
       setStatus("error");
       return;
     }
@@ -116,21 +159,20 @@ export default function ResultPage() {
     setOriginalImage(data.imageBase64);
     setStyleLabel(data.selectedStyle);
 
-    loadImageWithRetry(data.selectedStyle)
-      .then((url) => {
+    generateImage(data.selectedStyle)
+      .then(({ url, isFallback: fb }) => {
         setGeneratedImage(url);
+        setIsFallback(fb);
         setStatus("done");
       })
-      .catch((err: unknown) => {
-        const msg = err instanceof Error ? err.message : String(err);
-        setErrorMsg(msg);
+      .catch(() => {
         setStatus("error");
       });
   }
 
   const handleRetry = () => {
-    hasFired.current = false;
-    setAttemptCount((n) => n + 1);
+    generationRef.current = false;
+    setAttemptKey((n) => n + 1);
     startGeneration();
   };
 
@@ -177,7 +219,7 @@ export default function ResultPage() {
           {/* Loading State */}
           {status === "loading" && (
             <motion.div
-              key="loading"
+              key={`loading-${attemptKey}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
@@ -193,18 +235,22 @@ export default function ResultPage() {
               <p className="font-sans text-muted-foreground mb-8 max-w-md mx-auto">
                 Generating a unique{" "}
                 <span className="font-semibold capitalize">{styleLabel}</span>{" "}
-                room design. This may take up to 45 seconds — please wait.
+                room design. Trying multiple AI models — please wait up to 60
+                seconds.
               </p>
-              <div className="flex justify-center">
+              <div className="flex justify-center mb-6">
                 <div className="w-12 h-12 border-4 border-foreground/20 border-t-foreground rounded-full animate-spin" />
               </div>
+              <p className="font-sans text-xs text-muted-foreground/60">
+                Attempting flux → turbo → flux-realism models automatically
+              </p>
             </motion.div>
           )}
 
           {/* Error State */}
           {status === "error" && (
             <motion.div
-              key={`error-${attemptCount}`}
+              key={`error-${attemptKey}`}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -20 }}
@@ -215,10 +261,10 @@ export default function ResultPage() {
                 <AlertCircle className="w-10 h-10 text-destructive" />
               </div>
               <h2 className="font-serif text-2xl font-bold mb-3">
-                Generation Failed
+                Unable to Load Design Data
               </h2>
               <p className="font-sans text-muted-foreground mb-6 max-w-sm mx-auto text-sm">
-                {errorMsg}
+                Please go back to the design page and try generating again.
               </p>
               <div className="flex gap-3 justify-center">
                 <Button
@@ -246,13 +292,30 @@ export default function ResultPage() {
               animate={{ opacity: 1, y: 0 }}
               data-ocid="result.success_state"
             >
+              {isFallback && (
+                <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg flex items-center gap-2 text-sm text-amber-700 dark:text-amber-400">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0" />
+                  <span>
+                    The AI service is currently under heavy load. Showing a
+                    curated interior design instead.{" "}
+                    <button
+                      type="button"
+                      onClick={handleRetry}
+                      className="underline font-medium hover:opacity-80"
+                    >
+                      Try AI generation again
+                    </button>
+                  </span>
+                </div>
+              )}
+
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-8">
                 <div>
                   <h2 className="font-serif text-3xl font-bold mb-1">
                     Your Design is Ready!
                   </h2>
                   <p className="font-sans text-muted-foreground">
-                    AI-generated{" "}
+                    {isFallback ? "Curated" : "AI-generated"}{" "}
                     <span className="font-semibold capitalize">
                       {styleLabel}
                     </span>{" "}
@@ -306,12 +369,12 @@ export default function ResultPage() {
                 <div className="rounded-2xl overflow-hidden border border-border">
                   <div className="px-4 py-2 bg-foreground border-b border-foreground">
                     <p className="font-sans text-xs font-medium text-primary-foreground uppercase tracking-wider">
-                      AI Redesigned
+                      {isFallback ? "Curated Design" : "AI Redesigned"}
                     </p>
                   </div>
                   <img
                     src={generatedImage}
-                    alt="AI redesigned room"
+                    alt="Redesigned room"
                     className="w-full aspect-video object-cover"
                   />
                 </div>
@@ -330,8 +393,10 @@ export default function ResultPage() {
                     </p>
                   </div>
                   <div>
-                    <span className="text-muted-foreground">Status</span>
-                    <p className="font-medium mt-0.5">Completed</p>
+                    <span className="text-muted-foreground">Source</span>
+                    <p className="font-medium mt-0.5">
+                      {isFallback ? "Curated (AI busy)" : "AI Generated"}
+                    </p>
                   </div>
                 </div>
               </div>

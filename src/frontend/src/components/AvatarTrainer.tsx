@@ -169,6 +169,44 @@ const PUSHUP_HORIZ_DOWN: Pose = {
   rFot: { x: 68, y: 6 },
 };
 
+// Bench press — lying on back, arms extended up (press up)
+const BENCH_PRESS_UP: Pose = {
+  bY: 45,
+  head: { x: -80, y: -4 },
+  neck: { x: -63, y: -4 },
+  lSho: { x: -48, y: -10 },
+  lElb: { x: -48, y: -38 },
+  lHnd: { x: -48, y: -68 },
+  rSho: { x: -48, y: 6 },
+  rElb: { x: -48, y: 34 },
+  rHnd: { x: -48, y: 64 },
+  lHip: { x: 0, y: -4 },
+  rHip: { x: 0, y: 4 },
+  lKne: { x: 32, y: -10 },
+  lFot: { x: 58, y: -14 },
+  rKne: { x: 32, y: 10 },
+  rFot: { x: 58, y: 14 },
+};
+
+// Bench press — arms bent, hands at chest level (lowered)
+const BENCH_PRESS_DOWN: Pose = {
+  bY: 45,
+  head: { x: -80, y: -4 },
+  neck: { x: -63, y: -4 },
+  lSho: { x: -48, y: -10 },
+  lElb: { x: -30, y: -28 },
+  lHnd: { x: -48, y: -14 },
+  rSho: { x: -48, y: 6 },
+  rElb: { x: -30, y: 24 },
+  rHnd: { x: -48, y: 10 },
+  lHip: { x: 0, y: -4 },
+  rHip: { x: 0, y: 4 },
+  lKne: { x: 32, y: -10 },
+  lFot: { x: 58, y: -14 },
+  rKne: { x: 32, y: 10 },
+  rFot: { x: 58, y: 14 },
+};
+
 // --- STANDING / OTHER POSES ---
 
 const CURL_UP: Pose = {
@@ -412,9 +450,9 @@ const ANIMS: Record<string, Keyframe[]> = {
     [PUSHUP_HORIZ_UP, 1],
   ],
   bench_press: [
-    [PUSHUP_HORIZ_UP, 0],
-    [PUSHUP_HORIZ_DOWN, 0.5],
-    [PUSHUP_HORIZ_UP, 1],
+    [BENCH_PRESS_UP, 0],
+    [BENCH_PRESS_DOWN, 0.5],
+    [BENCH_PRESS_UP, 1],
   ],
   shoulder_press: [
     [SPRESS_DOWN, 0],

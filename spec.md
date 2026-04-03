@@ -1,45 +1,38 @@
-# FitAI - Smart Fitness Coach
+# Spark Fit – Side-View Human Avatar Trainer
 
 ## Current State
-New project. Empty workspace.
+- AvatarTrainer.tsx: Canvas-based stickman (orange lines + dots on dark gradient bg). Front-facing, symmetric poses.
+- AvatarPage.tsx: Workout timer, muscle selector, exercise list, speed control. Wraps AvatarTrainer.
+- Exercises: crunches, leg raises, plank, pushup, bench press, dumbbell curl, squat, lunge, jumping jack, etc.
 
 ## Requested Changes (Diff)
 
 ### Add
-- Multi-step onboarding wizard (personal info, lifestyle, goals, muscle targets)
-- Health calculator engine: BMI, BMR, TDEE, macros (protein/carbs/fats), fiber, water intake
-- AI-powered meal planner: Breakfast, Lunch, Dinner, Snacks with full macro breakdown per meal
-- Food image scanner: user uploads food photo, AI estimates nutritional info via Pollinations.ai text API
-- Alternative food suggestions: 2-3 foods with equivalent calories and quantities
-- Workout generator: exercises per muscle group (Abs, Biceps, Triceps, Chest, Shoulders, Legs, Full Body)
-- Smart weight suggestion: safe body weight goal + dumbbell weight by fitness level (Beginner/Intermediate/Advanced)
-- Personalized workout plan: reps, sets, rest time, difficulty per exercise
-- Safety system: age-based warnings, beginner weight alerts, warm-up reminders
-- Dashboard: calories consumed vs required, protein tracker, water tracker, workout completion ring
-- Weekly progress tracking with charts
-- Notification reminders (browser-based) for meals, water, workouts
-- Backend: user profile storage, daily nutrition/workout logs, weekly progress snapshots
+- Side-view (90° profile) avatar drawn with CSS/SVG to look like a realistic human silhouette wearing gym clothes (track pants + t-shirt, fit but not bulky)
+- Avatar positioned slightly left-of-center in the canvas, exercise area centred
+- Motivational text overlay during exercise: "Keep going 💪", "Don't stop now!", "You're doing great!", "Push harder 🔥"
+- Coach voice text bubbles per exercise (e.g. "Keep your back straight — perfect squat!")
+- Before/After body side-view panel: left = heavier silhouette, right = current/slimmer silhouette (both pure side view)
+- Food system avatar panel: slight hand-raise gesture with caption "Confirm your meal for accurate tracking."
 
 ### Modify
-- N/A (new project)
+- Replace current stickman AvatarTrainer with a side-profile human figure drawn using SVG paths/shapes in a canvas or inline SVG component
+- All exercise poses rendered from side profile (90° right-facing)
+- Background becomes a minimal gym room (floor line, wall, simple equipment outline)
+- Avatar face NOT visible (pure profile, no eye contact)
+- Exercise animations: jumping jacks (arms+legs spread from side), squats (side knee bend + hip back), plank (side-view flat hold), crunches (side lying→curl up)
+- AvatarPage header updated: "AI Trainer" instead of "Stickman Trainer"
 
 ### Remove
-- N/A
+- Front-facing symmetric stickman pose system
+- Orange dot/line stickman aesthetic
+- Moving dot particle background
 
 ## Implementation Plan
-
-### Backend (Motoko)
-- `UserProfile` type: age, weight, height, gender, lifestyle, goal, muscleTargets
-- `DailyLog` type: date, mealsConsumed[], workoutsCompleted[], waterGlasses, caloriesConsumed
-- `WeeklySnapshot` type: weekStart, avgCalories, avgWater, workoutsCompleted, weight
-- CRUD: saveProfile, getProfile, saveDailyLog, getDailyLog, saveWeeklySnapshot, getWeeklyHistory
-
-### Frontend
-- **OnboardingWizard**: 4 steps - PersonalInfo, Lifestyle, FitnessGoal+MuscleTargets, Summary
-- **Dashboard**: stats cards (calories ring, protein bar, water drops, workout check), quick actions
-- **NutritionPage**: daily meal plan cards, food scanner upload, alternative foods
-- **WorkoutPage**: muscle group selector, exercise cards with sets/reps/rest, safety warnings
-- **ProgressPage**: weekly bar charts for calories/workouts/water
-- **Calculations**: pure frontend math for BMI/BMR/TDEE/macros/water
-- **AI Food Scanner**: uses Pollinations.ai text API to analyze uploaded food image filename/description
-- **Design**: dark theme (gray-900/gray-800 backgrounds) with orange accents (#f97316), card-based layout
+1. Rewrite AvatarTrainer.tsx: Replace stickman canvas with a side-profile human figure drawn entirely in canvas using filled shapes (ellipses, bezier paths) to represent: head (circle, side view), torso (rounded rect rotated), upper arm, forearm, thigh, shin, feet — all in side profile.
+2. Side-view poses: define all key poses as x/y joint offsets from a side perspective (x = forward/back, y = up/down). Use same keyframe lerp system.
+3. Gym background: draw a floor line, a wall rectangle, optional barbell rack outline in light gray — no animated particles.
+4. Add motivation text that cycles through phrases during exercise (changes every 5 sec).
+5. Add coach voice text bubble per exercise (shown at start of each exercise).
+6. Update AvatarPage header title.
+7. Add Before/After side-view comparison panel below avatar (lightweight SVG silhouettes showing heavier vs current body shape).

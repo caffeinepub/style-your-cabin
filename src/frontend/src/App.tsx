@@ -1,13 +1,11 @@
 import {
   Apple,
-  Bot,
   Dumbbell,
   LayoutDashboard,
   Settings,
   TrendingUp,
 } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
-import AvatarPage from "./components/AvatarPage";
 import Dashboard from "./components/Dashboard";
 import NutritionTab from "./components/NutritionTab";
 import Onboarding from "./components/Onboarding";
@@ -168,11 +166,6 @@ export default function App() {
       label: "Progress",
       icon: <TrendingUp className="w-5 h-5" />,
     },
-    {
-      id: "avatar",
-      label: "Avatar",
-      icon: <Bot className="w-5 h-5" />,
-    },
   ];
 
   return (
@@ -275,7 +268,6 @@ export default function App() {
             onUpdateWeekly={handleUpdateWeekly}
           />
         )}
-        {activeTab === "avatar" && <AvatarPage profile={profile} />}
       </main>
 
       {/* Footer */}

@@ -9,12 +9,7 @@ export type MuscleTarget =
   | "legs"
   | "full_body";
 export type DifficultyLevel = "Beginner" | "Intermediate" | "Advanced";
-export type ActiveTab =
-  | "dashboard"
-  | "nutrition"
-  | "workout"
-  | "progress"
-  | "avatar";
+export type ActiveTab = "dashboard" | "nutrition" | "workout" | "progress";
 
 export interface UserProfile {
   age: number;

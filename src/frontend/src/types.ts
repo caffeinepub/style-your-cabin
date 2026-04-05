@@ -1,3 +1,5 @@
+// ─── Spark Fit Types (kept for backward compatibility with existing components) ───
+
 export type Gender = "male" | "female";
 export type Lifestyle = "student" | "wfh" | "office" | "active" | "athlete";
 export type FitnessGoal = "weight_loss" | "muscle_building" | "maintain";
@@ -95,3 +97,80 @@ export interface WeeklyLogEntry {
   hip?: number;
   waist?: number;
 }
+
+// ─── StockSim Types ───────────────────────────────────────────────────────────
+
+export type AssetType = "stock" | "commodity" | "crypto";
+
+export type AssetCategory =
+  | "us"
+  | "indian"
+  | "european"
+  | "asian"
+  | "crypto"
+  | "commodity";
+
+export interface Asset {
+  symbol: string;
+  name: string;
+  type: AssetType;
+  basePrice: number;
+  category?: AssetCategory;
+}
+
+export interface AssetState {
+  symbol: string;
+  price: number;
+  prevPrice: number;
+  openPrice: number; // 24h open price
+  history: number[]; // last 60 price points
+  flashClass: "up" | "down" | null;
+}
+
+export interface Holding {
+  symbol: string;
+  qty: number;
+  avgPrice: number;
+}
+
+export interface Transaction {
+  id: string;
+  timestamp: number;
+  symbol: string;
+  type: "BUY" | "SELL";
+  qty: number;
+  price: number;
+  total: number;
+  realizedPnL?: number;
+}
+
+export interface NewsItem {
+  id: string;
+  timestamp: number;
+  headline: string;
+  symbol: string;
+  impact: number; // % change, e.g. 0.03 = +3%
+  read: boolean;
+}
+
+export interface PlayerState {
+  playerName: string;
+  cash: number;
+  holdings: Record<string, Holding>;
+  transactions: Transaction[];
+  startingCash: number;
+}
+
+export interface LeaderboardEntry {
+  playerName: string;
+  netWorth: number;
+  returnPct: number;
+  timestamp: number;
+}
+
+export type StockTab =
+  | "dashboard"
+  | "markets"
+  | "portfolio"
+  | "news"
+  | "leaderboard";

@@ -29,11 +29,10 @@ const LS_PLAYER = "streetsim_player";
 const LS_LEADERBOARD = "streetsim_leaderboard";
 const LS_PRICES = "streetsim_prices";
 
-const STARTING_CASH = 10000;
 const LOCK_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
 const REAL_PRICE_INTERVAL_MS = 60 * 1000; // 1 minute
 
-function loadPlayer(name: string): PlayerState {
+function loadPlayer(name: string, capital: number): PlayerState {
   try {
     const s = localStorage.getItem(LS_PLAYER);
     if (s) {
@@ -45,10 +44,10 @@ function loadPlayer(name: string): PlayerState {
   }
   return {
     playerName: name,
-    cash: STARTING_CASH,
+    cash: capital,
     holdings: {},
     transactions: [],
-    startingCash: STARTING_CASH,
+    startingCash: capital,
   };
 }
 
@@ -76,16 +75,21 @@ function loadPrices(): Record<string, AssetState> | null {
 
 interface Props {
   playerName: string;
+  startingCapital: number;
   onReset: () => void;
 }
 
-export default function StockSimApp({ playerName, onReset }: Props) {
+export default function StockSimApp({
+  playerName,
+  startingCapital,
+  onReset,
+}: Props) {
   const [tab, setTab] = useState<StockTab>("dashboard");
   const [prices, setPrices] = useState<Record<string, AssetState>>(
     () => loadPrices() ?? initAssetStates(),
   );
   const [player, setPlayer] = useState<PlayerState>(() =>
-    loadPlayer(playerName),
+    loadPlayer(playerName, startingCapital),
   );
   const [news, setNews] = useState<NewsItem[]>([]);
   const [leaderboard, setLeaderboard] =
@@ -394,7 +398,10 @@ export default function StockSimApp({ playerName, onReset }: Props) {
 
       {/* Header */}
       <header
-        style={{ background: "#0B1220", borderBottom: "1px solid #2A3A4A" }}
+        style={{
+          background: "linear-gradient(180deg, #0D1626 0%, #0B1220 100%)",
+          borderBottom: "1px solid #2A3A4A",
+        }}
         className="sticky top-0 z-40 backdrop-blur"
       >
         <div className="max-w-7xl mx-auto px-4">
@@ -403,12 +410,19 @@ export default function StockSimApp({ playerName, onReset }: Props) {
             <div className="flex items-center gap-3">
               <div className="flex items-center">
                 <span
-                  style={{ color: "#39D98A" }}
-                  className="font-black text-xl tracking-tight"
+                  style={{
+                    color: "#39D98A",
+                    textShadow: "0 0 20px rgba(57,217,138,0.4)",
+                    fontSize: "22px",
+                  }}
+                  className="font-black tracking-tight"
                 >
                   STREET
                 </span>
-                <span className="font-black text-xl tracking-tight text-white">
+                <span
+                  style={{ fontSize: "22px" }}
+                  className="font-black tracking-tight text-white"
+                >
                   SIM
                 </span>
               </div>
@@ -440,8 +454,13 @@ export default function StockSimApp({ playerName, onReset }: Props) {
             <div className="flex items-center gap-3">
               <div className="hidden sm:flex items-center gap-3 text-xs">
                 <div
-                  style={{ background: "#121E2D", border: "1px solid #2A3A4A" }}
-                  className="rounded-lg px-3 py-1.5"
+                  style={{
+                    background: "#121E2D",
+                    border: "1px solid #2A3A4A",
+                    boxShadow: "0 0 12px rgba(57,217,138,0.08)",
+                    transition: "border-color 0.15s",
+                  }}
+                  className="rounded-lg px-3 py-1.5 hover:border-[#39D98A44]"
                 >
                   <span className="text-[#6B8899]">Cash: </span>
                   <span className="text-white font-mono font-bold">
@@ -449,8 +468,13 @@ export default function StockSimApp({ playerName, onReset }: Props) {
                   </span>
                 </div>
                 <div
-                  style={{ background: "#121E2D", border: "1px solid #2A3A4A" }}
-                  className="rounded-lg px-3 py-1.5"
+                  style={{
+                    background: "#121E2D",
+                    border: "1px solid #2A3A4A",
+                    boxShadow: "0 0 12px rgba(57,217,138,0.08)",
+                    transition: "border-color 0.15s",
+                  }}
+                  className="rounded-lg px-3 py-1.5 hover:border-[#39D98A44]"
                 >
                   <span className="text-[#6B8899]">Net Worth: </span>
                   <span className="text-white font-mono font-bold">
@@ -461,6 +485,7 @@ export default function StockSimApp({ playerName, onReset }: Props) {
                   style={{
                     background: "#121E2D",
                     border: `1px solid ${isUp ? "#39D98A33" : "#FF5A5F33"}`,
+                    transition: "border-color 0.15s",
                   }}
                   className="rounded-lg px-3 py-1.5"
                 >
@@ -481,7 +506,9 @@ export default function StockSimApp({ playerName, onReset }: Props) {
                 onClick={() => setTradingStopped((s) => !s)}
                 style={{
                   background: tradingStopped ? "#39D98A18" : "#FF5A5F18",
-                  border: `1px solid ${tradingStopped ? "#39D98A55" : "#FF5A5F55"}`,
+                  border: `1px solid ${
+                    tradingStopped ? "#39D98A55" : "#FF5A5F55"
+                  }`,
                   color: tradingStopped ? "#39D98A" : "#FF5A5F",
                 }}
                 className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
@@ -497,7 +524,7 @@ export default function StockSimApp({ playerName, onReset }: Props) {
                   style={{ background: "#121E2D", border: "1px solid #2A3A4A" }}
                   className="text-xs text-[#6B8899] px-2 py-1.5 rounded-lg"
                 >
-                  \uD83D\uDC64 {player.playerName}
+                  👤 {player.playerName}
                 </div>
                 <button
                   type="button"

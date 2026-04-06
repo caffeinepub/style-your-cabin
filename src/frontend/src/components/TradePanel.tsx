@@ -32,7 +32,11 @@ export default function TradePanel({
   if (!asset || !assetState) {
     return (
       <div
-        style={{ background: "#121E2D", border: "1px solid #2A3A4A" }}
+        style={{
+          background: "#121E2D",
+          border: "1px solid #2A3A4A",
+          boxShadow: "inset 0 2px 8px rgba(0,0,0,0.3)",
+        }}
         className="rounded-xl p-5 flex flex-col items-center justify-center text-center h-48"
       >
         <div className="text-3xl mb-2">&#128200;</div>
@@ -69,9 +73,30 @@ export default function TradePanel({
   const priceColor = isUp ? "#39D98A" : "#FF5A5F";
   const showWarning = !tradingLocked && !tradingStopped && lockSecondsLeft < 60;
 
+  // Execute button style
+  let execBg = "#2A3A4A";
+  let execColor = "#3A5A6A";
+  if (!isBlocked) {
+    if (mode === "BUY") {
+      execBg = canBuy
+        ? "linear-gradient(135deg, #39D98A, #2DB872)"
+        : "#39D98A44";
+      execColor = canBuy ? "#0B1220" : "#6B8899";
+    } else {
+      execBg = canSell
+        ? "linear-gradient(135deg, #FF5A5F, #E0474C)"
+        : "#FF5A5F44";
+      execColor = canSell ? "#0B1220" : "#6B8899";
+    }
+  }
+
   return (
     <div
-      style={{ background: "#121E2D", border: "1px solid #2A3A4A" }}
+      style={{
+        background: "#121E2D",
+        border: "1px solid #2A3A4A",
+        boxShadow: "inset 0 2px 8px rgba(0,0,0,0.25)",
+      }}
       className="rounded-xl p-5"
       data-ocid="dashboard.panel"
     >
@@ -335,20 +360,12 @@ export default function TradePanel({
         onClick={handleExecute}
         disabled={isBlocked || (mode === "BUY" ? !canBuy : !canSell)}
         style={{
-          background: isBlocked
-            ? "#2A3A4A"
-            : mode === "BUY"
-              ? canBuy
-                ? "#39D98A"
-                : "#39D98A44"
-              : canSell
-                ? "#FF5A5F"
-                : "#FF5A5F44",
-          color: isBlocked
-            ? "#3A5A6A"
-            : (mode === "BUY" ? canBuy : canSell)
-              ? "#0B1220"
-              : "#6B8899",
+          background: execBg,
+          color: execColor,
+          boxShadow:
+            !isBlocked && (mode === "BUY" ? canBuy : canSell)
+              ? "0 4px 12px rgba(0,0,0,0.3)"
+              : undefined,
         }}
         className="w-full py-3 rounded-xl font-bold text-sm transition-all"
       >

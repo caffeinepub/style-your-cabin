@@ -1,42 +1,30 @@
-# StockSim – Stop/Start Trading & Real Stock Prices
+# StockSim - Candlesticks, Custom Capital & UI Upgrade
 
 ## Current State
-- StockSim is a standalone trading simulation app with 40+ simulated assets
-- Prices are randomly simulated every 3 seconds using `tickPrices()` in `utils/simulation.ts`
-- There is an automatic capital lock timer (3 minutes of inactivity locks trading)
-- The TradePanel has BUY/SELL toggle buttons
-- Header shows market status badge (Open / Warning / Locked)
-- No manual stop/start button exists
-- No real-time stock price fetching from external APIs
+StockSim is a standalone React stock market simulation game. Users start with $10,000 (hardcoded). The chart is a line chart (`PriceChart.tsx`) showing price history with an area fill and hover tooltip. The onboarding screen (`StockOnboarding.tsx`) has a trader name input but no capital input. The overall dark UI uses `#0B1220` background with `#39D98A` green accents. The `AssetState` type stores `history: number[]` (60 price points).
 
 ## Requested Changes (Diff)
 
 ### Add
-- **Manual Stop/Start Trading button** in the header or trade panel: a prominent toggle button that lets the user pause all trading activity (no buys/sells allowed) and resume it again — same account, same portfolio, just trading paused/resumed
-- **Real-life stock price integration**: Fetch live/real prices for US stocks (AAPL, TSLA, GOOG, NVDA, MSFT, AMZN, JPM, NFLX, META) and commodities (Gold XAU, Silver XAG, Crude Oil WTI) using a free public API (e.g. Yahoo Finance unofficial endpoint or Alpha Vantage free tier or Finnhub free tier). For crypto (BTC, ETH, BNB, SOL), use CoinGecko free API. For Indian stocks (TCS, RELI, INFY, WIPRO, HDFC) and European/Asian stocks, use simulated prices seeded from realistic base prices since free APIs rarely cover those.
-- **"LIVE" vs "SIM" badge** per asset card or in header to show which assets have real prices vs simulated
-- A `useRealPrices` hook or similar that fetches real prices on mount and refreshes every 60 seconds, merging them into the price state alongside simulated assets
+- **Candlestick chart mode**: Toggle between line chart and candlestick (OHLC) chart on the dashboard. Candlesticks built with SVG, showing green (bullish) and red (bearish) candles with wicks. Derive OHLC data from the existing `history` price array by grouping N points per candle.
+- **Custom capital input on onboarding**: A numeric input field on the onboarding screen where users can type their own starting capital (min $1,000, max $10,000,000, default $10,000). The chosen amount is passed to `loadPlayer` and stored as `startingCash`.
+- **UI upgrade**: More polished look — gradient header, glowing stat cards, improved typography, better card depth with subtle inner shadows, smoother asset card hover states, improved trade panel buttons.
 
 ### Modify
-- `StockSimApp.tsx`: Add `tradingStopped` state (boolean). Pass it down to TradePanel, Dashboard. When stopped, buying and selling are blocked. Add a Stop/Start button to the header.
-- `TradePanel.tsx`: Respect `tradingStopped` prop — show a "Trading Paused" banner and disable all trade actions when stopped
-- Market status badge in header: show "⏸️ Paused" state when user manually stops trading
-- `utils/simulation.ts` or new `utils/realPrices.ts`: Add function to fetch and cache real prices from free public APIs
-- Asset cards: subtly indicate LIVE vs SIM data
+- `StockOnboarding.tsx`: Add capital input below trader name. Show preset quick-pick buttons ($1K, $10K, $100K, $1M). Pass capital to `onStart(name, capital)` callback.
+- `App.tsx`: Update `onStart` signature to `(name: string, capital: number)`. Pass capital to `StockSimApp`.
+- `StockSimApp.tsx`: Accept `startingCapital` prop, use it as `STARTING_CASH` instead of hardcoded value. Update `loadPlayer` call.
+- `PriceChart.tsx`: Add chart type toggle (Line | Candles). When candles selected, render SVG candlestick chart derived from history data. Keep line chart as default.
+- `loadPlayer` in `StockSimApp.tsx`: Accept capital param, use it for new players.
+- Header stat cards: Make them visually richer with glow/border effects. Add gradient backgrounds.
+- Asset cards: Improve hover states, add micro-sparkline if space allows.
 
 ### Remove
-- Nothing removed
+- Nothing removed.
 
 ## Implementation Plan
-1. Add `tradingStopped` boolean state to `StockSimApp.tsx`
-2. Add a prominent Stop/Start toggle button in the header (next to existing badges)
-3. Pass `tradingStopped` to `TradePanel` and `StockDashboard` components
-4. Update `TradePanel` to show a "⏸️ Trading Paused" banner and disable buttons when `tradingStopped === true`
-5. Update header market status badge to show Paused state
-6. Create `utils/realPrices.ts` that fetches:
-   - US stocks + crypto via Yahoo Finance unofficial quote endpoint (no API key, CORS-friendly via proxy or direct)
-   - Or use `https://query1.finance.yahoo.com/v8/finance/spark?symbols=AAPL,TSLA,...` (free, no key)
-   - Alternatively use Finnhub free tier or CoinGecko for crypto
-7. Merge fetched real prices into the simulation state on mount and every 60s
-8. Add a small "LIVE" indicator badge on asset cards/price displays that use real data
-9. Keep simulation running for assets without real price data (Indian, European, Asian stocks)
+1. **`StockOnboarding.tsx`**: Add `capital` state, numeric input with min/max validation, quick-pick preset buttons ($1K, $10K, $100K, $1M). Update form submit to call `onStart(name, capital)`. Update onboarding stats row to show chosen capital dynamically.
+2. **`App.tsx`**: Change `onStart` to `(name: string, capital: number)`. Store capital in localStorage. Pass `startingCapital` to `StockSimApp`.
+3. **`StockSimApp.tsx`**: Accept `startingCapital: number` prop. Replace hardcoded `STARTING_CASH = 10000` with prop. Update `loadPlayer(name, startingCapital)`. Clear capital from localStorage on reset.
+4. **`PriceChart.tsx`**: Add `CandlestickChart` sub-component using SVG. Group `history` array into OHLC candles (every 4-5 points = 1 candle). Render candle bodies and wicks. Add toggle button (Line/Candles) in chart header. Both charts should support hover tooltip.
+5. **UI polish**: Upgrade header with gradient/glow on stat cards. Improve card borders and shadows. Better typography hierarchy.

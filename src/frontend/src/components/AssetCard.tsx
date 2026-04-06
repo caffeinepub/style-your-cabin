@@ -1,3 +1,4 @@
+import { useState } from "react";
 import type { Asset, AssetState } from "../types";
 import { change24h, formatPct, formatPrice } from "../utils/simulation";
 
@@ -53,6 +54,7 @@ export default function AssetCard({
   onClick,
   onTrade,
 }: Props) {
+  const [hovered, setHovered] = useState(false);
   const chg = change24h(state);
   const isUp = chg >= 0;
   const color = isUp ? "#39D98A" : "#FF5A5F";
@@ -60,28 +62,42 @@ export default function AssetCard({
   const accentColor = isGold ? "#F5B942" : color;
 
   let flashBg = "";
-  if (state.flashClass === "up") flashBg = "rgba(57,217,138,0.08)";
-  if (state.flashClass === "down") flashBg = "rgba(255,90,95,0.08)";
+  if (state.flashClass === "up") flashBg = "rgba(57,217,138,0.12)";
+  if (state.flashClass === "down") flashBg = "rgba(255,90,95,0.12)";
+
+  const cardBg = selected
+    ? "#1A2E40"
+    : flashBg && !hovered
+      ? flashBg
+      : "#121E2D";
+
+  const cardBorder = selected ? "#39D98A" : hovered ? "#3A5A6A" : "#2A3A4A";
+
+  const cardBoxShadow = selected
+    ? "0 0 16px rgba(57,217,138,0.2), inset 0 0 16px rgba(57,217,138,0.05)"
+    : hovered
+      ? "0 4px 16px rgba(0,0,0,0.3)"
+      : flashBg
+        ? `0 0 16px 0 ${flashBg}`
+        : undefined;
 
   return (
     <button
       type="button"
       onClick={onClick}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
       data-ocid="markets.card"
       style={{
-        background: selected ? "#1A2E40" : "#121E2D",
-        border: `1px solid ${selected ? "#39D98A" : "#2A3A4A"}`,
-        boxShadow: selected
-          ? "0 0 0 1px #39D98A33"
-          : flashBg
-            ? `0 0 16px 0 ${flashBg}`
-            : undefined,
-        transition: "all 0.25s",
-        backgroundColor: flashBg && !selected ? flashBg : undefined,
+        background: cardBg,
+        border: `1px solid ${cardBorder}`,
+        boxShadow: cardBoxShadow,
+        transition: "all 0.15s ease",
+        transform: hovered ? "translateY(-1px)" : "translateY(0)",
         textAlign: "left",
         width: "100%",
       }}
-      className="rounded-xl p-4 cursor-pointer hover:border-[#3A5A6A] transition-all group"
+      className="rounded-xl p-4 cursor-pointer"
     >
       <div className="flex items-start justify-between mb-2">
         <div>
@@ -182,6 +198,7 @@ export default function AssetCard({
             fontSize: "12px",
             fontWeight: "700",
             cursor: "pointer",
+            transition: "all 0.15s ease",
           }}
         >
           Trade

@@ -1,12 +1,52 @@
 import { useState } from "react";
 
 interface Props {
-  onStart: (playerName: string) => void;
+  onStart: (playerName: string, capital: number) => void;
+}
+
+const PRESETS = [
+  { label: "$1K", value: 1000 },
+  { label: "$10K", value: 10000 },
+  { label: "$100K", value: 100000 },
+  { label: "$1M", value: 1000000 },
+];
+
+function formatCapitalDisplay(value: number): string {
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    maximumFractionDigits: 0,
+  }).format(value);
 }
 
 export default function StockOnboarding({ onStart }: Props) {
   const [name, setName] = useState("");
+  const [capital, setCapital] = useState(10000);
+  const [capitalInput, setCapitalInput] = useState("10000");
   const [error, setError] = useState("");
+  const [capitalError, setCapitalError] = useState("");
+
+  const selectedPreset =
+    PRESETS.find((p) => p.value === capital)?.value ?? null;
+
+  const handleCapitalChange = (val: string) => {
+    setCapitalInput(val);
+    const num = Number(val.replace(/[^0-9]/g, ""));
+    if (!Number.isNaN(num)) {
+      setCapital(num);
+      if (num < 1000) {
+        setCapitalError("Minimum starting capital is $1,000");
+      } else {
+        setCapitalError("");
+      }
+    }
+  };
+
+  const handlePresetClick = (value: number) => {
+    setCapital(value);
+    setCapitalInput(String(value));
+    setCapitalError("");
+  };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -15,7 +55,11 @@ export default function StockOnboarding({ onStart }: Props) {
       setError("Please enter your trader name.");
       return;
     }
-    onStart(trimmed);
+    if (capital < 1000) {
+      setCapitalError("Minimum starting capital is $1,000");
+      return;
+    }
+    onStart(trimmed, capital);
   };
 
   return (
@@ -38,7 +82,10 @@ export default function StockOnboarding({ onStart }: Props) {
         <div className="mb-8">
           <div className="flex items-center justify-center gap-1 mb-3">
             <span
-              style={{ color: "#39D98A" }}
+              style={{
+                color: "#39D98A",
+                textShadow: "0 0 20px rgba(57,217,138,0.4)",
+              }}
               className="font-black text-5xl tracking-tight"
             >
               STREET
@@ -58,14 +105,18 @@ export default function StockOnboarding({ onStart }: Props) {
         {/* Stats row */}
         <div className="grid grid-cols-3 gap-3 mb-8">
           {[
-            { label: "Starting Capital", value: "$10,000", color: "#39D98A" },
             { label: "Assets", value: "40+", color: "#F5B942" },
             { label: "News Events", value: "80+", color: "#60A5FA" },
+            { label: "Categories", value: "8", color: "#39D98A" },
           ].map((stat) => (
             <div
               key={stat.label}
-              style={{ background: "#121E2D", border: "1px solid #2A3A4A" }}
-              className="rounded-xl p-4"
+              style={{
+                background: "#121E2D",
+                border: "1px solid #2A3A4A",
+                transition: "all 0.2s",
+              }}
+              className="rounded-xl p-4 hover:border-[#3A5A6A] hover:shadow-lg"
             >
               <div
                 style={{ color: stat.color }}
@@ -108,12 +159,13 @@ export default function StockOnboarding({ onStart }: Props) {
           <div className="text-left mb-5">
             <h2 className="font-bold text-white text-lg">Enter the Market</h2>
             <p className="text-[#6B8899] text-sm mt-1">
-              Start with $10,000 virtual cash — trade actively or lose your
-              market access after 3 minutes of inactivity.
+              Choose your starting capital and trader name. Trade actively or
+              lose market access after 3 minutes of inactivity.
             </p>
           </div>
 
-          <div className="mb-4">
+          {/* Trader name */}
+          <div className="mb-5">
             <label
               htmlFor="trader-name"
               className="block text-xs text-[#6B8899] mb-2 font-semibold"
@@ -147,11 +199,85 @@ export default function StockOnboarding({ onStart }: Props) {
             )}
           </div>
 
+          {/* Starting capital */}
+          <div className="mb-5">
+            <label
+              htmlFor="starting-capital"
+              className="block text-xs text-[#6B8899] mb-2 font-semibold"
+            >
+              STARTING CAPITAL
+            </label>
+
+            {/* Preset buttons */}
+            <div className="flex gap-2 mb-3">
+              {PRESETS.map((preset) => (
+                <button
+                  key={preset.value}
+                  type="button"
+                  data-ocid="onboarding.toggle"
+                  onClick={() => handlePresetClick(preset.value)}
+                  style={{
+                    background:
+                      selectedPreset === preset.value ? "#39D98A22" : "#0B1220",
+                    border: `1px solid ${
+                      selectedPreset === preset.value ? "#39D98A" : "#2A3A4A"
+                    }`,
+                    color:
+                      selectedPreset === preset.value ? "#39D98A" : "#6B8899",
+                    transition: "all 0.15s",
+                  }}
+                  className="flex-1 py-2 text-xs font-bold rounded-lg hover:border-[#39D98A55]"
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Manual input */}
+            <input
+              id="starting-capital"
+              type="number"
+              data-ocid="onboarding.capital_input"
+              value={capitalInput}
+              min={1000}
+              max={10000000}
+              onChange={(e) => handleCapitalChange(e.target.value)}
+              style={{
+                background: "#0B1220",
+                border: `1px solid ${capitalError ? "#FF5A5F" : "#2A3A4A"}`,
+                color: "white",
+              }}
+              className="w-full px-4 py-3 rounded-xl text-sm font-mono placeholder-[#3A5A6A] focus:outline-none focus:border-[#39D98A] transition-colors"
+            />
+
+            {/* Formatted display */}
+            <div className="mt-2 text-center">
+              <span
+                style={{ color: capital >= 1000 ? "#39D98A" : "#FF5A5F" }}
+                className="font-black text-2xl font-mono tracking-tight"
+              >
+                {formatCapitalDisplay(capital)}
+              </span>
+            </div>
+
+            {capitalError && (
+              <div
+                data-ocid="onboarding.capital_error_state"
+                className="text-[#FF5A5F] text-xs mt-1.5"
+              >
+                {capitalError}
+              </div>
+            )}
+          </div>
+
           <button
             type="submit"
             data-ocid="onboarding.submit_button"
-            style={{ background: "#39D98A", color: "#0B1220" }}
-            className="w-full py-3.5 rounded-xl font-black text-sm uppercase tracking-wider hover:opacity-90 transition-opacity"
+            style={{
+              background: "linear-gradient(135deg, #39D98A, #2DB872)",
+              color: "#0B1220",
+            }}
+            className="w-full py-3.5 rounded-xl font-black text-sm uppercase tracking-wider hover:opacity-90 transition-opacity shadow-lg"
           >
             Start Trading
           </button>

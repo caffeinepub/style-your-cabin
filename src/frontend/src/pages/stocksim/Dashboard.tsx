@@ -17,11 +17,11 @@ type CategoryFilter = "all" | AssetCategory;
 const CATEGORY_TABS: { id: CategoryFilter; label: string }[] = [
   { id: "all", label: "All" },
   { id: "us", label: "US Stocks" },
-  { id: "indian", label: "🇮🇳 Indian" },
-  { id: "european", label: "🇪🇺 European" },
-  { id: "asian", label: "🌏 Asian" },
-  { id: "crypto", label: "₿ Crypto" },
-  { id: "commodity", label: "⛏️ Commodities" },
+  { id: "indian", label: "\uD83C\uDDEE\uD83C\uDDF3 Indian" },
+  { id: "european", label: "\uD83C\uDDEA\uD83C\uDDFA European" },
+  { id: "asian", label: "\uD83C\uDF0F Asian" },
+  { id: "crypto", label: "\u20BF Crypto" },
+  { id: "commodity", label: "\u26CF\uFE0F Commodities" },
 ];
 
 interface Props {
@@ -29,7 +29,9 @@ interface Props {
   player: PlayerState;
   news: NewsItem[];
   tradingLocked: boolean;
+  tradingStopped: boolean;
   lockSecondsLeft: number;
+  liveSymbols: Set<string>;
   onBuy: (symbol: string, qty: number) => void;
   onSell: (symbol: string, qty: number) => void;
 }
@@ -39,7 +41,9 @@ export default function StockDashboard({
   player,
   news: _news,
   tradingLocked,
+  tradingStopped,
   lockSecondsLeft,
+  liveSymbols,
   onBuy,
   onSell,
 }: Props) {
@@ -105,6 +109,7 @@ export default function StockDashboard({
                     asset={asset}
                     state={prices[asset.symbol]}
                     selected={selectedSymbol === asset.symbol}
+                    isLive={liveSymbols.has(asset.symbol)}
                     onClick={() => setSelectedSymbol(asset.symbol)}
                     onTrade={() => setSelectedSymbol(asset.symbol)}
                   />
@@ -125,6 +130,7 @@ export default function StockDashboard({
                     asset={asset}
                     state={prices[asset.symbol]}
                     selected={selectedSymbol === asset.symbol}
+                    isLive={liveSymbols.has(asset.symbol)}
                     onClick={() => setSelectedSymbol(asset.symbol)}
                     onTrade={() => setSelectedSymbol(asset.symbol)}
                   />
@@ -145,6 +151,7 @@ export default function StockDashboard({
                     asset={asset}
                     state={prices[asset.symbol]}
                     selected={selectedSymbol === asset.symbol}
+                    isLive={liveSymbols.has(asset.symbol)}
                     onClick={() => setSelectedSymbol(asset.symbol)}
                     onTrade={() => setSelectedSymbol(asset.symbol)}
                   />
@@ -183,7 +190,9 @@ export default function StockDashboard({
             assetState={selectedState ?? null}
             player={player}
             tradingLocked={tradingLocked}
+            tradingStopped={tradingStopped}
             lockSecondsLeft={lockSecondsLeft}
+            isLive={liveSymbols.has(selected.symbol)}
             onBuy={onBuy}
             onSell={onSell}
           />

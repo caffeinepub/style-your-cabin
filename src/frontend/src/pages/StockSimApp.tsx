@@ -11,6 +11,7 @@ import type {
   StockTab,
   Transaction,
 } from "../types";
+import { LIVE_ELIGIBLE_SYMBOLS, fetchRealPrices } from "../utils/realPrices";
 import {
   applyNewsImpact,
   clearFlash,
@@ -30,6 +31,7 @@ const LS_PRICES = "streetsim_prices";
 
 const STARTING_CASH = 10000;
 const LOCK_TIMEOUT_MS = 3 * 60 * 1000; // 3 minutes
+const REAL_PRICE_INTERVAL_MS = 60 * 1000; // 1 minute
 
 function loadPlayer(name: string): PlayerState {
   try {
@@ -89,10 +91,16 @@ export default function StockSimApp({ playerName, onReset }: Props) {
   const [leaderboard, setLeaderboard] =
     useState<LeaderboardEntry[]>(loadLeaderboard);
 
+  // Manual stop/start trading
+  const [tradingStopped, setTradingStopped] = useState(false);
+
   // Capital lock timer state
   const [lastTradeTime, setLastTradeTime] = useState<number>(() => Date.now());
   const [lockSecondsLeft, setLockSecondsLeft] = useState<number>(180);
   const tradingLocked = lockSecondsLeft === 0;
+
+  // Real price tracking
+  const [liveSymbols, setLiveSymbols] = useState<Set<string>>(new Set());
 
   const newsTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -133,6 +141,46 @@ export default function StockSimApp({ playerName, onReset }: Props) {
         return next;
       });
     }, 3000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Real price fetch — on mount then every 60s
+  useEffect(() => {
+    const applyRealPrices = async () => {
+      try {
+        const realPrices = await fetchRealPrices();
+        const symbols = Object.keys(realPrices);
+        if (symbols.length === 0) return;
+        setPrices((prev) => {
+          const next = { ...prev };
+          for (const sym of symbols) {
+            if (next[sym]) {
+              const newPrice = realPrices[sym];
+              next[sym] = {
+                ...next[sym],
+                prevPrice: next[sym].price,
+                price: newPrice,
+                history: [...next[sym].history.slice(-59), newPrice],
+                flashClass:
+                  newPrice > next[sym].price
+                    ? "up"
+                    : newPrice < next[sym].price
+                      ? "down"
+                      : null,
+              };
+            }
+          }
+          return next;
+        });
+        setLiveSymbols(
+          new Set(symbols.filter((s) => LIVE_ELIGIBLE_SYMBOLS.has(s))),
+        );
+      } catch {
+        // silently fall back to simulation
+      }
+    };
+    applyRealPrices();
+    const id = setInterval(applyRealPrices, REAL_PRICE_INTERVAL_MS);
     return () => clearInterval(id);
   }, []);
 
@@ -190,6 +238,7 @@ export default function StockSimApp({ playerName, onReset }: Props) {
 
   const handleBuy = useCallback(
     (symbol: string, qty: number) => {
+      if (tradingStopped || tradingLocked) return;
       setPlayer((prev) => {
         const price = prices[symbol]?.price;
         if (!price) return prev;
@@ -222,11 +271,12 @@ export default function StockSimApp({ playerName, onReset }: Props) {
       // Reset trade timer
       setLastTradeTime(Date.now());
     },
-    [prices],
+    [prices, tradingStopped, tradingLocked],
   );
 
   const handleSell = useCallback(
     (symbol: string, qty: number) => {
+      if (tradingStopped || tradingLocked) return;
       setPlayer((prev) => {
         const price = prices[symbol]?.price;
         if (!price) return prev;
@@ -258,7 +308,7 @@ export default function StockSimApp({ playerName, onReset }: Props) {
       // Reset trade timer
       setLastTradeTime(Date.now());
     },
-    [prices],
+    [prices, tradingStopped, tradingLocked],
   );
 
   const handleSaveScore = useCallback(() => {
@@ -306,27 +356,34 @@ export default function StockSimApp({ playerName, onReset }: Props) {
     ((netWorth - player.startingCash) / player.startingCash) * 100;
   const isUp = returnPct >= 0;
 
-  // Derive market status badge
-  const marketStatusBadge = tradingLocked
+  // Derive market status badge — tradingStopped overrides lock state
+  const marketStatusBadge = tradingStopped
     ? {
-        label: "🔒 Locked",
-        bg: "#FF5A5F22",
-        color: "#FF5A5F",
-        border: "#FF5A5F44",
+        label: "⏸ Paused",
+        bg: "#F5B94222",
+        color: "#F5B942",
+        border: "#F5B94244",
       }
-    : lockSecondsLeft < 60
+    : tradingLocked
       ? {
-          label: `⚠️ ${lockSecondsLeft}s left`,
-          bg: "#F5B94222",
-          color: "#F5B942",
-          border: "#F5B94244",
+          label: "🔒 Locked",
+          bg: "#FF5A5F22",
+          color: "#FF5A5F",
+          border: "#FF5A5F44",
         }
-      : {
-          label: "🟢 Market Open",
-          bg: "#39D98A22",
-          color: "#39D98A",
-          border: "#39D98A33",
-        };
+      : lockSecondsLeft < 60
+        ? {
+            label: `⚠️ ${lockSecondsLeft}s left`,
+            bg: "#F5B94222",
+            color: "#F5B942",
+            border: "#F5B94244",
+          }
+        : {
+            label: "🟢 Market Open",
+            bg: "#39D98A22",
+            color: "#39D98A",
+            border: "#39D98A33",
+          };
 
   return (
     <div
@@ -380,7 +437,7 @@ export default function StockSimApp({ playerName, onReset }: Props) {
             </div>
 
             {/* Player stats */}
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
               <div className="hidden sm:flex items-center gap-3 text-xs">
                 <div
                   style={{ background: "#121E2D", border: "1px solid #2A3A4A" }}
@@ -416,6 +473,25 @@ export default function StockSimApp({ playerName, onReset }: Props) {
                   </span>
                 </div>
               </div>
+
+              {/* Stop / Start Trading Button */}
+              <button
+                type="button"
+                data-ocid="trade.toggle"
+                onClick={() => setTradingStopped((s) => !s)}
+                style={{
+                  background: tradingStopped ? "#39D98A18" : "#FF5A5F18",
+                  border: `1px solid ${tradingStopped ? "#39D98A55" : "#FF5A5F55"}`,
+                  color: tradingStopped ? "#39D98A" : "#FF5A5F",
+                }}
+                className="flex items-center gap-1.5 text-xs font-bold px-3 py-1.5 rounded-lg transition-all hover:opacity-80"
+              >
+                <span>{tradingStopped ? "▶" : "⏸"}</span>
+                <span className="hidden sm:inline">
+                  {tradingStopped ? "Start Trading" : "Stop Trading"}
+                </span>
+              </button>
+
               <div className="flex items-center gap-2">
                 <div
                   style={{ background: "#121E2D", border: "1px solid #2A3A4A" }}
@@ -472,7 +548,9 @@ export default function StockSimApp({ playerName, onReset }: Props) {
             onBuy={handleBuy}
             onSell={handleSell}
             tradingLocked={tradingLocked}
+            tradingStopped={tradingStopped}
             lockSecondsLeft={lockSecondsLeft}
+            liveSymbols={liveSymbols}
           />
         )}
         {tab === "markets" && (

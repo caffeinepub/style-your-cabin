@@ -7,7 +7,9 @@ interface Props {
   assetState: AssetState | null;
   player: PlayerState;
   tradingLocked: boolean;
+  tradingStopped?: boolean;
   lockSecondsLeft: number;
+  isLive?: boolean;
   onBuy: (symbol: string, qty: number) => void;
   onSell: (symbol: string, qty: number) => void;
 }
@@ -17,7 +19,9 @@ export default function TradePanel({
   assetState,
   player,
   tradingLocked,
+  tradingStopped = false,
   lockSecondsLeft,
+  isLive = false,
   onBuy,
   onSell,
 }: Props) {
@@ -37,17 +41,20 @@ export default function TradePanel({
     );
   }
 
+  // Either manual stop or inactivity lock disables trading
+  const isBlocked = tradingStopped || tradingLocked;
+
   const price = assetState.price;
   const total = price * qty;
   const holding = player.holdings[asset.symbol];
   const heldQty = holding?.qty ?? 0;
   const avgCost = holding?.avgPrice ?? 0;
   const unrealizedPnL = heldQty > 0 ? (price - avgCost) * heldQty : 0;
-  const canBuy = player.cash >= total && qty > 0 && !tradingLocked;
-  const canSell = heldQty >= qty && qty > 0 && !tradingLocked;
+  const canBuy = player.cash >= total && qty > 0 && !isBlocked;
+  const canSell = heldQty >= qty && qty > 0 && !isBlocked;
 
   const handleExecute = () => {
-    if (tradingLocked) return;
+    if (isBlocked) return;
     if (mode === "BUY" && canBuy) {
       onBuy(asset.symbol, qty);
       setLastAction(`Bought ${qty}x ${asset.symbol} @ $${formatPrice(price)}`);
@@ -57,10 +64,10 @@ export default function TradePanel({
     }
   };
 
-  const maxBuy = tradingLocked ? 0 : Math.floor(player.cash / price);
+  const maxBuy = isBlocked ? 0 : Math.floor(player.cash / price);
   const isUp = assetState.price >= assetState.prevPrice;
   const priceColor = isUp ? "#39D98A" : "#FF5A5F";
-  const showWarning = !tradingLocked && lockSecondsLeft < 60;
+  const showWarning = !tradingLocked && !tradingStopped && lockSecondsLeft < 60;
 
   return (
     <div
@@ -68,8 +75,24 @@ export default function TradePanel({
       className="rounded-xl p-5"
       data-ocid="dashboard.panel"
     >
-      {/* Lock / Warning Banner */}
-      {tradingLocked && (
+      {/* Manually stopped banner — shown above lock banner */}
+      {tradingStopped && (
+        <div
+          data-ocid="trade.error_state"
+          style={{
+            background: "#F5B94218",
+            border: "1px solid #F5B94255",
+            color: "#F5B942",
+          }}
+          className="rounded-lg px-3 py-2 mb-4 text-xs font-bold flex items-center gap-2"
+        >
+          <span className="text-base">⏸</span>
+          <span>Trading Paused — Press Start to resume</span>
+        </div>
+      )}
+
+      {/* Inactivity lock banner */}
+      {!tradingStopped && tradingLocked && (
         <div
           data-ocid="trade.error_state"
           style={{
@@ -83,6 +106,7 @@ export default function TradePanel({
           <span>Market Closed — Trading resumes when you make a trade</span>
         </div>
       )}
+
       {showWarning && (
         <div
           data-ocid="trade.loading_state"
@@ -104,7 +128,59 @@ export default function TradePanel({
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
-          <div className="font-bold text-white font-mono">{asset.symbol}</div>
+          <div className="flex items-center gap-2">
+            <span className="font-bold text-white font-mono">
+              {asset.symbol}
+            </span>
+            {/* LIVE / SIM badge */}
+            {isLive ? (
+              <span
+                style={{
+                  background: "#39D98A18",
+                  color: "#39D98A",
+                  border: "1px solid #39D98A44",
+                  fontSize: "9px",
+                  letterSpacing: "0.05em",
+                }}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded font-bold"
+              >
+                <span
+                  style={{
+                    width: 5,
+                    height: 5,
+                    borderRadius: "50%",
+                    background: "#39D98A",
+                    display: "inline-block",
+                    flexShrink: 0,
+                  }}
+                />
+                LIVE
+              </span>
+            ) : (
+              <span
+                style={{
+                  background: "#6B889918",
+                  color: "#6B8899",
+                  border: "1px solid #6B889944",
+                  fontSize: "9px",
+                  letterSpacing: "0.05em",
+                }}
+                className="flex items-center gap-0.5 px-1.5 py-0.5 rounded font-bold"
+              >
+                <span
+                  style={{
+                    width: 5,
+                    height: 5,
+                    borderRadius: "50%",
+                    background: "#6B8899",
+                    display: "inline-block",
+                    flexShrink: 0,
+                  }}
+                />
+                SIM
+              </span>
+            )}
+          </div>
           <div className="text-[#6B8899] text-xs">{asset.name}</div>
         </div>
         <div className="text-right">
@@ -123,11 +199,11 @@ export default function TradePanel({
           type="button"
           data-ocid="trade.tab"
           onClick={() => setMode("BUY")}
-          disabled={tradingLocked}
+          disabled={isBlocked}
           style={{
             background:
-              mode === "BUY" && !tradingLocked ? "#39D98A22" : "transparent",
-            color: tradingLocked
+              mode === "BUY" && !isBlocked ? "#39D98A22" : "transparent",
+            color: isBlocked
               ? "#3A5A6A"
               : mode === "BUY"
                 ? "#39D98A"
@@ -142,11 +218,11 @@ export default function TradePanel({
           type="button"
           data-ocid="trade.tab"
           onClick={() => setMode("SELL")}
-          disabled={tradingLocked}
+          disabled={isBlocked}
           style={{
             background:
-              mode === "SELL" && !tradingLocked ? "#FF5A5F22" : "transparent",
-            color: tradingLocked
+              mode === "SELL" && !isBlocked ? "#FF5A5F22" : "transparent",
+            color: isBlocked
               ? "#3A5A6A"
               : mode === "SELL"
                 ? "#FF5A5F"
@@ -198,12 +274,12 @@ export default function TradePanel({
         <div className="flex gap-2">
           <button
             type="button"
-            disabled={tradingLocked}
+            disabled={isBlocked}
             onClick={() => setQty((q) => Math.max(1, q - 1))}
             style={{
               background: "#0B1220",
               border: "1px solid #2A3A4A",
-              color: tradingLocked ? "#3A5A6A" : "white",
+              color: isBlocked ? "#3A5A6A" : "white",
             }}
             className="w-9 h-9 rounded-lg font-bold hover:border-[#39D98A] transition-colors"
           >
@@ -215,25 +291,25 @@ export default function TradePanel({
             data-ocid="trade.input"
             value={qty}
             min={1}
-            disabled={tradingLocked}
+            disabled={isBlocked}
             onChange={(e) =>
               setQty(Math.max(1, Number.parseInt(e.target.value) || 1))
             }
             style={{
               background: "#0B1220",
               border: "1px solid #2A3A4A",
-              color: tradingLocked ? "#3A5A6A" : "white",
+              color: isBlocked ? "#3A5A6A" : "white",
             }}
             className="flex-1 text-center font-mono rounded-lg py-2 text-sm focus:outline-none focus:border-[#39D98A]"
           />
           <button
             type="button"
-            disabled={tradingLocked}
+            disabled={isBlocked}
             onClick={() => setQty((q) => q + 1)}
             style={{
               background: "#0B1220",
               border: "1px solid #2A3A4A",
-              color: tradingLocked ? "#3A5A6A" : "white",
+              color: isBlocked ? "#3A5A6A" : "white",
             }}
             className="w-9 h-9 rounded-lg font-bold hover:border-[#39D98A] transition-colors"
           >
@@ -257,9 +333,9 @@ export default function TradePanel({
         type="button"
         data-ocid="trade.submit_button"
         onClick={handleExecute}
-        disabled={tradingLocked || (mode === "BUY" ? !canBuy : !canSell)}
+        disabled={isBlocked || (mode === "BUY" ? !canBuy : !canSell)}
         style={{
-          background: tradingLocked
+          background: isBlocked
             ? "#2A3A4A"
             : mode === "BUY"
               ? canBuy
@@ -268,7 +344,7 @@ export default function TradePanel({
               : canSell
                 ? "#FF5A5F"
                 : "#FF5A5F44",
-          color: tradingLocked
+          color: isBlocked
             ? "#3A5A6A"
             : (mode === "BUY" ? canBuy : canSell)
               ? "#0B1220"
@@ -276,9 +352,11 @@ export default function TradePanel({
         }}
         className="w-full py-3 rounded-xl font-bold text-sm transition-all"
       >
-        {tradingLocked
-          ? "🔒 Market Locked"
-          : `${mode === "BUY" ? "Buy" : "Sell"} ${asset.symbol}`}
+        {tradingStopped
+          ? "⏸ Trading Paused"
+          : tradingLocked
+            ? "🔒 Market Locked"
+            : `${mode === "BUY" ? "Buy" : "Sell"} ${asset.symbol}`}
       </button>
 
       {/* Cash available */}

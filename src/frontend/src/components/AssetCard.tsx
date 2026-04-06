@@ -5,6 +5,7 @@ interface Props {
   asset: Asset;
   state: AssetState;
   selected: boolean;
+  isLive?: boolean;
   onClick: () => void;
   onTrade: () => void;
 }
@@ -48,6 +49,7 @@ export default function AssetCard({
   asset,
   state,
   selected,
+  isLive = false,
   onClick,
   onTrade,
 }: Props) {
@@ -87,6 +89,55 @@ export default function AssetCard({
             <span className="font-bold text-white font-mono text-sm">
               {asset.symbol}
             </span>
+            {/* LIVE / SIM badge */}
+            {isLive ? (
+              <span
+                style={{
+                  background: "#39D98A18",
+                  color: "#39D98A",
+                  border: "1px solid #39D98A33",
+                  fontSize: "8px",
+                  letterSpacing: "0.04em",
+                  lineHeight: 1,
+                }}
+                className="flex items-center gap-0.5 px-1 py-0.5 rounded font-bold"
+              >
+                <span
+                  style={{
+                    width: 4,
+                    height: 4,
+                    borderRadius: "50%",
+                    background: "#39D98A",
+                    display: "inline-block",
+                    flexShrink: 0,
+                  }}
+                />
+                LIVE
+              </span>
+            ) : (
+              <span
+                style={{
+                  background: "transparent",
+                  color: "#4A6A7A",
+                  fontSize: "8px",
+                  letterSpacing: "0.04em",
+                  lineHeight: 1,
+                }}
+                className="flex items-center gap-0.5 px-1 py-0.5 rounded font-bold"
+              >
+                <span
+                  style={{
+                    width: 4,
+                    height: 4,
+                    borderRadius: "50%",
+                    background: "#4A6A7A",
+                    display: "inline-block",
+                    flexShrink: 0,
+                  }}
+                />
+                SIM
+              </span>
+            )}
             {asset.type === "commodity" && (
               <span
                 style={{ background: "#F5B94222", color: "#F5B942" }}

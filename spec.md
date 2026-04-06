@@ -1,42 +1,42 @@
-# StockSim – Advanced Upgrade
+# StockSim – Stop/Start Trading & Real Stock Prices
 
 ## Current State
-- 11 assets: AAPL, TSLA, GOOG, NVDA, MSFT, AMZN, JPM, NFLX, XAU, XAG, WTI
-- Prices tick every 3s, news fires every 30-50s
-- Basic buy/sell, portfolio, leaderboard, news feed
-- No trading limits or lock mechanisms
+- StockSim is a standalone trading simulation app with 40+ simulated assets
+- Prices are randomly simulated every 3 seconds using `tickPrices()` in `utils/simulation.ts`
+- There is an automatic capital lock timer (3 minutes of inactivity locks trading)
+- The TradePanel has BUY/SELL toggle buttons
+- Header shows market status badge (Open / Warning / Locked)
+- No manual stop/start button exists
+- No real-time stock price fetching from external APIs
 
 ## Requested Changes (Diff)
 
 ### Add
-- **Capital lock timer**: After the player hasn't made a trade for N minutes (configurable, default 3 min), trading is locked. A visible countdown shows time remaining. When locked, buy/sell buttons are disabled with a clear "Market Closed" message showing when it reopens. Timer resets on every trade.
-- **30+ new companies** across categories:
-  - Indian stocks: TATA (Tata Consultancy), RELI (Reliance Industries), INFY (Infosys), WIPRO (Wipro), HDFC (HDFC Bank)
-  - European stocks: BMW (BMW Group), SIEM (Siemens), LVMH (LVMH), SAP (SAP SE), NESN (Nestle)
-  - Asian stocks: SAMS (Samsung), TOYT (Toyota), SONY (Sony), BABA (Alibaba), BAIDU (Baidu)
-  - US extras: META (Meta), DIS (Disney), SBUX (Starbucks), V (Visa), WMT (Walmart)
-  - Crypto: BTC (Bitcoin), ETH (Ethereum)
-  - More commodities: NAT (Natural Gas), CORN (Corn Futures), CPR (Copper)
-- Asset categories now shown in tabs/filters: All, US Stocks, Indian, European, Asian, Crypto, Commodities
-- News events for all new companies (positive + negative)
-- Onboarding stats updated to show 40+ assets
+- **Manual Stop/Start Trading button** in the header or trade panel: a prominent toggle button that lets the user pause all trading activity (no buys/sells allowed) and resume it again — same account, same portfolio, just trading paused/resumed
+- **Real-life stock price integration**: Fetch live/real prices for US stocks (AAPL, TSLA, GOOG, NVDA, MSFT, AMZN, JPM, NFLX, META) and commodities (Gold XAU, Silver XAG, Crude Oil WTI) using a free public API (e.g. Yahoo Finance unofficial endpoint or Alpha Vantage free tier or Finnhub free tier). For crypto (BTC, ETH, BNB, SOL), use CoinGecko free API. For Indian stocks (TCS, RELI, INFY, WIPRO, HDFC) and European/Asian stocks, use simulated prices seeded from realistic base prices since free APIs rarely cover those.
+- **"LIVE" vs "SIM" badge** per asset card or in header to show which assets have real prices vs simulated
+- A `useRealPrices` hook or similar that fetches real prices on mount and refreshes every 60 seconds, merging them into the price state alongside simulated assets
 
 ### Modify
-- TradePanel: Show capital lock countdown, disable buy/sell when locked
-- StockSimApp: Add trading lock timer logic
-- Dashboard: Support asset category filter
-- StockOnboarding: Update asset count stat
-- assets.ts: Add all new assets and their news
-- types.ts: Add tradingLockedUntil to PlayerState
+- `StockSimApp.tsx`: Add `tradingStopped` state (boolean). Pass it down to TradePanel, Dashboard. When stopped, buying and selling are blocked. Add a Stop/Start button to the header.
+- `TradePanel.tsx`: Respect `tradingStopped` prop — show a "Trading Paused" banner and disable all trade actions when stopped
+- Market status badge in header: show "⏸️ Paused" state when user manually stops trading
+- `utils/simulation.ts` or new `utils/realPrices.ts`: Add function to fetch and cache real prices from free public APIs
+- Asset cards: subtly indicate LIVE vs SIM data
 
 ### Remove
 - Nothing removed
 
 ## Implementation Plan
-1. Update types.ts: add tradingLockedUntil field
-2. Update assets.ts: add 30+ assets and news events
-3. Update simulation.ts: initAssetStates handles new assets automatically
-4. Update StockSimApp: add lock timer (resets on every buy/sell, 3 min countdown), pass lockState to TradePanel
-5. Update TradePanel: show lock countdown, disable buttons when locked
-6. Update Dashboard: asset category filter tabs
-7. Update StockOnboarding: show 40+ assets stat
+1. Add `tradingStopped` boolean state to `StockSimApp.tsx`
+2. Add a prominent Stop/Start toggle button in the header (next to existing badges)
+3. Pass `tradingStopped` to `TradePanel` and `StockDashboard` components
+4. Update `TradePanel` to show a "⏸️ Trading Paused" banner and disable buttons when `tradingStopped === true`
+5. Update header market status badge to show Paused state
+6. Create `utils/realPrices.ts` that fetches:
+   - US stocks + crypto via Yahoo Finance unofficial quote endpoint (no API key, CORS-friendly via proxy or direct)
+   - Or use `https://query1.finance.yahoo.com/v8/finance/spark?symbols=AAPL,TSLA,...` (free, no key)
+   - Alternatively use Finnhub free tier or CoinGecko for crypto
+7. Merge fetched real prices into the simulation state on mount and every 60s
+8. Add a small "LIVE" indicator badge on asset cards/price displays that use real data
+9. Keep simulation running for assets without real price data (Indian, European, Asian stocks)
